@@ -13,6 +13,7 @@ from newspaper import Article
 from goose3 import Goose  # Import Goose class from goose3 module
 from zenrows import ZenRowsClient
 from etf_scraper import ETFScraper
+from pyetfdb_scraper.etf import ETF,load_etfs
 
 def get_sp500_tickers():
   """
@@ -216,9 +217,9 @@ def calculate_combined_risk_score(data, ticker):
 
 
 def calculate_combined_trend_score(data, ticker):
-  ema_val = ema(data["Close"], 60)
-  rsi_val = rsi(data["Close"], 60)
-  bollinger_bands = bands(data["Close"], 60, 2)
+  ema_val = ema(data["Close"], 14)
+  rsi_val = rsi(data["Close"], 14)
+  bollinger_bands = bands(data["Close"], 14, 2)
   upper_band = bollinger_bands[0]
   lower_band = bollinger_bands[1]
 
@@ -268,28 +269,76 @@ def calculate_combined_trend_score(data, ticker):
 
 cache = {}
 
-def get_etf_holdings(api_key, etf_symbol):
-  etf_scraper = ETFScraper()
+def get_etf_holdings(symbol):
+  try:
+    # Send a GET request to the URL
+    url = f"https://etfdb.com/etf/{symbol}/#holdings"
+    response = requests.get(url)
+    response.raise_for_status()  # Check for HTTP request errors
+    soup = BeautifulSoup(response.text, 'html.parser')
 
-  holdings_df = etf_scraper.query_holdings(fund_ticker, holdings_date)
-  print(holdings_df)
-  return holdings_df
+    # Find the holdings table by ID
+    holdings_table = soup.find('table', {'id': 'etf-holdings'})
 
-def calculate_overlap_percentage(etf_symbol):
-    """
-    Calculate the percentage of holdings overlap between the specified ETF and SPY.
-    """
-    etf_holdings = set(get_etf_holdings('Q4S7LJR4R74OP1BJ', etf_symbol))
-    spy_holdings = set(get_etf_holdings('Q4S7LJR4R74OP1BJ', "SPY"))
+    # Initialize lists to hold symbols and weights
+    symbols = []
+    weights = []
 
-    if not etf_holdings or not spy_holdings:
-        print("Error fetching holdings.")
-        return 0
+    # Iterate through each row in the tbody of the holdings table
+    for row in holdings_table.find('tbody').find_all('tr'):
+        # Extract the symbol from the first td element
+        symbol_text = row.find('td').text.strip()
+        symbols.append(symbol_text)
 
-    # Calculate overlap
-    overlap = etf_holdings.intersection(spy_holdings)
-    overlap_percentage = (len(overlap) / len(etf_holdings))
-    return overlap_percentage
+        # Extract the weight from the last td element, remove '%' and convert to float
+        weight_text = row.find_all('td')[-1].text.strip().replace('%', '')
+        weights.append(float(weight_text))
+
+    # Create a DataFrame with symbols and weights
+    holdings_df = pd.DataFrame({
+        'symbol': symbols,
+        'weight': weights
+    })
+
+    return holdings_df
+
+  except Exception as e:
+      print(f"An error occurred: {e}")
+      # Return an empty DataFrame if an error occurs
+      return pd.DataFrame({'symbol': [], 'weight': []})
+  
+
+def calculate_overlap_percentage(s1, s2):
+  if (s1 in cache):
+    df1 = cache[s1]
+  else:
+    df1 = get_etf_holdings(s1)
+    cache[s1] = df1
+  
+  if (s2 in cache):
+    df2 = cache[s2]
+  else:
+    df2 = get_etf_holdings(s2)
+    cache[s2] = df2
+  
+  merged_df = pd.merge(df1, df2, on='symbol', suffixes=('_df1', '_df2'))
+
+  # Step 2: Calculate the minimum weight for each common symbol
+  merged_df['min_weight'] = merged_df[['weight_df1', 'weight_df2']].min(axis=1)
+
+  # Step 3: Sum of minimum weights for overlap calculation
+  total_weighted_overlap = merged_df['min_weight'].sum()
+
+  # Step 4: Total weight in the first DataFrame (change to '_df2' for the second DataFrame if needed)
+  total_weight_df1 = df1['weight'].sum()
+  total_weight_df2 = df2['weight'].sum()
+
+  # Step 5: Calculate weighted overlap percentage
+  o1 = (total_weighted_overlap / total_weight_df1)
+  o2 = (total_weighted_overlap / total_weight_df2)
+
+  print(s1, s2, o1, o2)
+  return o1
 
 
 # Function to calculate indicators for a symbol
@@ -315,8 +364,7 @@ def calculate_indicators(style, symbol):
   if data is None or ticker is None:
     return None
   
-  overlap = calculate_overlap_percentage(symbol)
-  print("*****", symbol, overlap)
+
   
   # Initialize a new dictionary to store the results
   new_data = {}
@@ -373,7 +421,7 @@ def calculate_indicators(style, symbol):
   volatility_60 = data['Close'].pct_change().rolling(window=60).std().iloc[-1]
   weights_60 = 1 / volatility_60
   new_data['volatility_60'] = weights_60 * rolling_returns_60
-  new_data['overlap'] = overlap
+  # new_data['overlap'] = overlap
   # print("XXXX", new_data)
   # Calculate composite score
   weights = [0.10, 0.15, 0.20, 0.10, 0.15, 0.20, 0.10]
@@ -429,32 +477,73 @@ ranked_etf_data = ranked_etf_data.round(2)
 def categorize_etf(row):
   if "S&P" in row['longName']:
     if row['style'] == 'consistent-growth':
-      return 'S&P consistent-growth'
+      return 'SPCG'
     elif row['style'] == 'aggressive-growth':
-      return 'S&P aggressive-growth'
+      return 'SPAG'
   else:
     if row['style'] == 'consistent-growth':
-      return 'Non S&P consistent-growth'
+      return 'NSPCG'
     elif row['style'] == 'aggressive-growth':
-      return 'Non S&P aggressive-growth'
+      return 'NSPAG'
   return None
 
+top_etf_symbols_by_category = {}
 
 ranked_etf_data['category'] = ranked_etf_data.apply(categorize_etf, axis=1)
 
 # Exclude ETFs that don't fit into the specified categories
 filtered_etf_data = ranked_etf_data.dropna(subset=['category'])
+filtered_etf_data['overlap'] = None
 max_volume = filtered_etf_data['Volume_60'].max()
+# Sort ETFs within each category by their rank
+filtered_etf_data.sort_values(by=['category', 'Composite Score'],
+                              ascending=[True, False],
+                              inplace=True)
 
-# Rank ETFs within each category by combined metric of composite score and volume
-# Considering higher composite scores and higher volumes as better, normalize and sum these for ranking
-filtered_etf_data['rank_metric'] = filtered_etf_data[
-    'Composite Score'] + filtered_etf_data['Volume_60'] / max_volume
+for index, row in filtered_etf_data.iterrows():
+    category = row['category']
+    current_etf_symbol = row['symbol']
+
+    # Check if the top ETF symbol for the current category is already noted
+    if category not in top_etf_symbols_by_category:
+        # If not, the current ETF is the top ETF for its category (due to sorting)
+        top_etf_symbols_by_category[category] = current_etf_symbol
+        # The top ETF has 100% overlap with itself by definition
+        filtered_etf_data.at[index, 'overlap'] = 0.001
+    else:
+        # For other ETFs, calculate the overlap with the top ETF of their category
+        top_etf_symbol = top_etf_symbols_by_category[category]
+        overlap_percentage = calculate_overlap_percentage(current_etf_symbol, top_etf_symbol)
+        filtered_etf_data.at[index, 'overlap'] = overlap_percentage
+
+filtered_etf_data['rank_metric'] = 0.70 * filtered_etf_data[
+    'Composite Score'] + 0.10 * (filtered_etf_data['Volume_60'] / max_volume) + 0.20 * (1-filtered_etf_data['overlap'])
 
 # Sort ETFs within each category by their rank
 filtered_etf_data.sort_values(by=['category', 'rank_metric'],
                               ascending=[True, False],
                               inplace=True)
+print(filtered_etf_data)
+
+filtered_etf_data['overlap'] = filtered_etf_data['overlap'].astype(float)
+
+# Step 1: Round the 'overlap' values to two decimal places
+filtered_etf_data['overlap_rounded'] = filtered_etf_data['overlap'].round(2)
+
+# Step 2: Mark duplicates in 'overlap_rounded' within each 'category'
+# keep=False marks all duplicates as True, including the first occurrence
+# ~ (NOT) operator is used to keep rows that are NOT marked as duplicates
+is_unique_within_category = ~filtered_etf_data.duplicated(subset=['category', 'overlap_rounded'], keep='first')
+
+# Step 3: Filter out the duplicates based on the above condition
+filtered_etf_data = filtered_etf_data[is_unique_within_category]
+
+filtered_etf_data.reset_index(drop=True, inplace=True)
+
+# # Optionally, you can drop the 'overlap_rounded' column if it's no longer needed
+# filtered_etf_data = filtered_etf_data_unique.drop(columns=['overlap_rounded'])
+
+print(filtered_etf_data)
 
 
 # Select top ETFs per category according to allocation percentages
@@ -463,26 +552,22 @@ def allocate_etfs(df, allocations):
   for category, allocation in allocations.items():
       # Select ETFs within the current category
       category_etfs = df[df['category'] == category]
-  
-      # Sort ETFs by their overlap percentage to prioritize diversification
-      category_etfs_sorted_by_overlap = category_etfs.sort_values(by='overlap', ascending=True)
-  
       # Calculate the number of ETFs to select based on the allocation percentage
-      num_etfs = round(len(category_etfs_sorted_by_overlap) * allocation / 100)
+      num_etfs = round(len(category_etfs) * allocation / 100)
       num_etfs = max(num_etfs, 1)  # Ensure at least one ETF is selected
   
       # Concatenate the selected ETFs to the allocated ETFs DataFrame
-      allocated_etfs = pd.concat([allocated_etfs, category_etfs_sorted_by_overlap.head(num_etfs)])
+      allocated_etfs = pd.concat([allocated_etfs, category_etfs.head(num_etfs)])
   
   return allocated_etfs
 
 
 # Allocate ETFs based on specified portfolio percentages
 portfolio_allocations = {
-    'S&P consistent-growth': 50,
-    'S&P aggressive-growth': 20,
-    'Non S&P consistent-growth': 20,
-    'Non S&P aggressive-growth': 10
+    'SPCG': 50,
+    'SPAG': 20,
+    'NSPCG': 20,
+    'NSPAG': 10
 }
 
 allocated_etfs = allocate_etfs(filtered_etf_data, portfolio_allocations)
@@ -494,7 +579,7 @@ allocated_etfs['investment_amount'] = allocated_etfs['category'].apply(
 
 # Preparing the final display table
 final_portfolio = allocated_etfs[[
-    'symbol', 'longName', 'category', 'investment_amount', 'overlap'
+    'symbol', 'rank_metric', 'longName', 'category', 'investment_amount', 'overlap', 'Composite Score'
 ]].copy()
 
 # Correctly calculate the investment amount by distributing within categories evenly
@@ -511,6 +596,16 @@ current_date = datetime.today().strftime('%Y-%m-%d')
 # Save the DataFrame as a CSV file with the current date in the filename
 ranked_etf_data.to_csv(f'ranked_etf_data{current_date}.csv')
 final_portfolio.to_csv(f'final_portfolio_{current_date}.csv')
+
+with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+  markdown_str = final_portfolio.to_markdown(index=False)
+
+# Combine the date and the markdown table in the content to be written to the file
+content_to_write = f"Data as of {current_date}:\n\n{final_portfolio}"
+
+# Write the combined content to readme.md
+with open('readme.md', 'w') as file:
+    file.write(content_to_write)
 
 # ranked_sp_500_data.to_csv(f'ranked_sp_500_data{current_date}.csv')
 
