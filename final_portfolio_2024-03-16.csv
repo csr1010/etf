@@ -1,0 +1,12 @@
+,symbol,longName,category,investment_amount,overlap
+0,SPY,SPDR S&P 500 ETF Trust,S&P consistent-growth,1875.0,
+1,SPHQ,Invesco S&P 500 Quality ETF,S&P consistent-growth,1875.0,
+2,SPLG,SPDR Portfolio S&P 500 ETF,S&P consistent-growth,1875.0,
+3,VOO,Vanguard S&P 500 ETF,S&P consistent-growth,1875.0,
+4,IUSG,iShares Core S&P U.S. Growth ETF,S&P aggressive-growth,3000.0,
+5,QUAL,iShares MSCI USA Quality Factor ETF,Non S&P consistent-growth,750.0,
+6,FTCS,First Trust Capital Strength ETF,Non S&P consistent-growth,750.0,
+7,VIG,Vanguard Dividend Appreciation Index Fund ETF Shares,Non S&P consistent-growth,750.0,
+8,MOAT,VanEck Morningstar Wide Moat ETF,Non S&P consistent-growth,750.0,
+9,SMH,VanEck Semiconductor ETF,Non S&P aggressive-growth,750.0,
+10,ONEQ,Fidelity Nasdaq Composite Index ETF,Non S&P aggressive-growth,750.0,

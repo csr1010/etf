@@ -1,0 +1,13 @@
+,symbol,longName,category,investment_amount
+0,SPY,SPDR S&P 500 ETF Trust,S&P consistent-growth,1875.0
+1,SPHQ,Invesco S&P 500 Quality ETF,S&P consistent-growth,1875.0
+2,SPLG,SPDR Portfolio S&P 500 ETF,S&P consistent-growth,1875.0
+3,IVV,iShares Core S&P 500 ETF,S&P consistent-growth,1875.0
+4,SPYG,SPDR Portfolio S&P 500 Growth ETF,S&P aggressive-growth,1500.0
+5,QUAL,iShares MSCI USA Quality Factor ETF,Non S&P consistent-growth,900.0
+6,SCHX,Schwab U.S. Large-Cap ETF,Non S&P consistent-growth,900.0
+7,VV,Vanguard Large Cap Index Fund,Non S&P consistent-growth,900.0
+8,SCHB,Schwab U.S. Broad Market ETF,Non S&P consistent-growth,900.0
+9,IWB,iShares Russell 1000 ETF,Non S&P consistent-growth,900.0
+10,SMH,VanEck Semiconductor ETF,Non S&P aggressive-growth,750.0
+11,SOXX,iShares Semiconductor ETF,Non S&P aggressive-growth,750.0
