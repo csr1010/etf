@@ -192,6 +192,7 @@ def calculate_combined_risk_score(data, ticker):
 
   # Assuming financials is a dict-like object with a 'debtToEquity' key
   debt_to_equity = ticker.financials.get("debtToEquity", np.nan)
+  print(ticker, debt_to_equity)
   leverage_score = debt_to_equity if not np.isnan(debt_to_equity) else np.nan
 
   # Assuming ticker.info is a dict-like object with a 'marketCap' key
@@ -201,8 +202,8 @@ def calculate_combined_risk_score(data, ticker):
 
   # Create a NumPy array of individual risk scores (handle potential NaNs)
   risk_scores = np.array([volatility_score, leverage_score, mcap_score])
-  valid_risk_scores = risk_scores[~np.isnan(risk_scores)]  # Remove NaNs
-
+  valid_risk_scores = risk_scores[~np.isnan(risk_scores)]
+  
   # Weighted scores - adjust based on available scores
   weights = np.array([0.4, 0.3, 0.3])[:len(valid_risk_scores)]
   # Normalize weights to ensure they sum up to 1
@@ -213,59 +214,64 @@ def calculate_combined_risk_score(data, ticker):
       normalized_weights,
       valid_risk_scores) if valid_risk_scores.any() else np.nan
 
-  return combined_risk_score
+  max_risk_score = 10  # Example maximum value for demonstration
+  safe_score = (max_risk_score - combined_risk_score) / max_risk_score
 
+  # Ensure safe score is within 0-1 range
+  safe_score_normalized = np.clip(safe_score, 0, 1)
 
-def calculate_combined_trend_score(data, ticker):
+  return {
+      "combined_risk_score": combined_risk_score,
+      "safe_score_normalized": safe_score_normalized
+  }
+
+def calculate_combined_trend_score(data):
+  # Assuming 'ema', 'rsi', and 'bands' functions are defined and return the necessary values.
   ema_val = ema(data["Close"], 14)
   rsi_val = rsi(data["Close"], 14)
   bollinger_bands = bands(data["Close"], 14, 2)
-  upper_band = bollinger_bands[0]
-  lower_band = bollinger_bands[1]
-
-  # Calculate technical indicator scores more appropriately
-  ema_score = 1.0 if data["Close"].iloc[-1] > ema_val[-1] else 0.0
-  rsi_score = 0.1 if rsi_val[-1] > 70 else 1.0 if rsi_val[-1] < 30 else 0.5
-  bollinger_score = 1.0 if data["Close"].iloc[-1] > upper_band[
-      -1] else 0.0 if data["Close"].iloc[-1] < lower_band[-1] else 0.5
-
-  # Analyze technical indicators
-  market_condition = "Neutral"
-  # Adjust thresholds for RSI to provide a buffer zone
-  rsi_overbought_threshold = 70
-  rsi_oversold_threshold = 30
-
-  trend = "Upward" if data["Close"].iloc[-1] > ema_val[
-      -1] else "Downward" if data["Close"].iloc[-1] < ema_val[-1] else "Neutral"
-
-  # Check for both conditions to agree on overbought/oversold status
-  is_overbought = rsi_val[
-      -1] > rsi_overbought_threshold and bollinger_score == 1.0
-  is_oversold = rsi_val[-1] < rsi_oversold_threshold and bollinger_score == 0.0
-
-  # Determine market condition based on refined criteria
-  if is_overbought:
-    # Check if recent trend supports the overbought condition
-    if trend == "upward":
-      market_condition = "Overbought - Caution"
-    else:
-      market_condition = "Overbought - Potential Reversal"
-  elif is_oversold:
-    # Check if recent trend supports the oversold condition
-    if trend == "downward":
-      market_condition = "Oversold - Caution"
-    else:
-      market_condition = "Oversold - Potential Reversal"
-
-  # Create and return results dictionary
-  analysis_results = {
-      "rsi": rsi_score,
-      "ema": ema_score,
-      "market": market_condition,
-      "trend": trend
+  upper_band, lower_band = bollinger_bands[0], bollinger_bands[1]
+  
+  score = 0
+  trend = 'neutral'
+  situation = 'neutral'
+  
+  # RSI Conditions
+  if rsi_val[-1] > 70:
+      situation = 'overbought'
+      score -= 3
+  elif 60 < rsi_val[-1] <= 70:
+      situation = 'close to overbought'
+      score -= 1
+  elif 30 <= rsi_val[-1] < 40:
+      situation = 'close to oversold'
+      score += 1
+  elif rsi_val[-1] < 30:
+      situation = 'oversold'
+      score += 3
+  
+  # EMA Trend
+  if data["Close"].iloc[-1] > ema_val[-1]:
+      trend = 'up'
+      score += 1
+  elif data["Close"].iloc[-1] < ema_val[-1]:
+      trend = 'down'
+      score -= 1
+  
+  # Bollinger Bands Condition
+  if data["Close"].iloc[-1] >= upper_band[-1]:
+      score -= 1  # Adjusting score based on Bollinger Band condition
+  elif data["Close"].iloc[-1] <= lower_band[-1]:
+      score += 1
+  
+  # Normalize score to be between 0 and 1
+  normalized_score = (score + 5) / 10  # Assuming score range is -5 to +5 for normalization
+  
+  return {
+      "overall_score": normalized_score,
+      "trend": trend,
+      "situation": situation
   }
-
-  return analysis_results
 
 cache = {}
 
@@ -376,19 +382,17 @@ def calculate_indicators(style, symbol):
   new_data['type'] = ticker.info['legalType']
   new_data['L.Year'] = data['Close'].iloc[0]
   new_data['Today'] = data['Close'].iloc[-1]
-  new_data['risk_score'] = calculate_combined_risk_score(data, ticker)
+  new_data['inverse_risk_score'] = calculate_combined_risk_score(data, ticker)['safe_score_normalized']
   # Create a new list to store article URLs
   # article_urls = [article.get('link') for article in ticker.news]
   # news = get_stock_performance_sentiment(symbol)
   # new_data['news_overall'] = news['overall_sentiment']
   # new_data['inclination'] = 1 if news['average_sentiment']['positive'] > news[
   #     'average_sentiment']['negative'] else -1
-  trend_anlaysis = calculate_combined_trend_score(data, ticker)
-  new_data['rsi'] = trend_anlaysis['rsi']
-  new_data['market'] = trend_anlaysis['market']
-  new_data['m.trend'] = trend_anlaysis['trend']
-  new_data['inverse_risk_score'] = 1 / new_data['risk_score']
-
+  trend_anlaysis = calculate_combined_trend_score(data)
+  new_data['analysis_score'] = trend_anlaysis['overall_score']
+  new_data['market'] = trend_anlaysis['situation']
+  new_data['trend'] = trend_anlaysis['trend']
   new_data['15 day'] = ((data['Close'].iloc[-1] - data['Close'].iloc[-15]) /
                         data['Close'].iloc[-7]) * 100
   new_data['30 day'] = ((data['Close'].iloc[-1] - data['Close'].iloc[-30]) /
@@ -424,10 +428,9 @@ def calculate_indicators(style, symbol):
   # new_data['overlap'] = overlap
   # print("XXXX", new_data)
   # Calculate composite score
-  weights = [0.10, 0.15, 0.20, 0.10, 0.15, 0.20, 0.10]
-  factors = [
-      '60 day', '90 day', 'fluctuation_60', 'volatility_60',
-      'inverse_risk_score', 'rsi', 'peratio'
+  weights = [0.15, 0.15, 0.20, 0.15, 0.10, 0.15, 0.10]
+  factors = ['15 day', '30 day', '60 day', 'volatility_60',
+      'inverse_risk_score', 'peratio', 'analysis_score'
   ]
   # print(new_data)
   new_data['Composite Score'] = np.dot(
@@ -470,7 +473,7 @@ ranked_etf_data = combined_etf_data.sort_values(by='Composite Score',
                                                 ascending=False)
 # ranked_sp_500_data = combined_sp_500_data.sort_values(by='Composite Score', ascending=False)
 
-ranked_etf_data = ranked_etf_data.round(2)
+ranked_etf_data = ranked_etf_data.round(3)
 # ranked_sp_500_data = ranked_sp_500_data.round(2)
 
 # Filter and categorize ETFs correctly
@@ -601,7 +604,7 @@ with pd.option_context('display.max_rows', None, 'display.max_columns', None):
   markdown_str = final_portfolio.to_markdown(index=False)
 
 # Combine the date and the markdown table in the content to be written to the file
-content_to_write = f"Data as of {current_date}:\n\n{final_portfolio}"
+content_to_write = f"Data as of {current_date}:\n\n{markdown_str}"
 
 # Write the combined content to readme.md
 with open('readme.md', 'w') as file:
