@@ -1,5 +1,8 @@
 {pkgs}: {
   deps = [
+    pkgs.cacert
+    pkgs.zlib
+    pkgs.xcodebuild
     pkgs.libxcrypt
     pkgs.geckodriver
     pkgs.tk

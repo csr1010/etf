@@ -14,6 +14,8 @@ from goose3 import Goose  # Import Goose class from goose3 module
 from zenrows import ZenRowsClient
 from etf_scraper import ETFScraper
 from pyetfdb_scraper.etf import ETF,load_etfs
+from lxml import html
+import re
 
 def get_sp500_tickers():
   """
@@ -33,7 +35,7 @@ def get_sp500_tickers():
 sector_url = "https://etfdb.com/etfs/sector/#sector-power-rankings__return-leaderboard&sort_name=aum_position&sort_order=asc&page=1"
 
 investment_styles = [
-    'consistent-growth', 'aggressive-growth'
+    'consistent-growth', 'aggressive-growth', 'low-beta', 'high-momentum'
 ]
 print('investment_styles', investment_styles)
 
@@ -69,9 +71,11 @@ def scrape_etf_symbols(url):
   if tbody:
     for row in tbody.find_all('tr'):
       symbol_cell = row.find('td', attrs={'data-th': 'Symbol'})
+      etf_cell = row.find('td', attrs={'data-th': 'ETF Name'})
       if symbol_cell:
         symbol = symbol_cell.find('a').text.strip()
-        symbols.append(symbol)
+        symbol_name = etf_cell.find('a').text.strip()
+        symbols.append((symbol, symbol_name))
   return symbols
 
 
@@ -80,11 +84,30 @@ sector_specific_url = "https://etfdb.com/etfs/sector/{sector}/?search[inverse]=f
 investment_style_url = 'https://etfdb.com/etfs/investment-style/{style}/?search[inverse]=false&search[leveraged]=false#etfs&sort_name=assets_under_management&sort_order=desc&page=1'
 # Scrape ETF symbols for each of the top 4 sectors
 etf_tickers = []
+hm_keywords = ["global", "intl", "international"]
+lb_keywords = ["bond"]
+
 for style in investment_styles:
-  url = investment_style_url.format(style=style)
-  tickers = scrape_etf_symbols(url)
-  for ticker in tickers:
-    etf_tickers.append((style, ticker))
+    url = investment_style_url.format(style=style)
+    tickers = scrape_etf_symbols(url)
+    for ticker, name in tickers:
+        # Convert name to lowercase for case-insensitive comparison
+        name_lower = name.lower()
+        # print(style, ticker, name)
+        # For 'high-momentum' style, check if name contains any of the keywords
+        if style == "high-momentum":
+             # print(style, ticker, name_lower)
+            # Use any() to check if any keyword is in the ETF name
+            if any(keyword in name_lower for keyword in hm_keywords):
+                etf_tickers.append((style, ticker))
+        elif style == "low-beta":
+             # print(style, ticker, name_lower)
+            # Use any() to check if any keyword is in the ETF name
+            if any(keyword in name_lower for keyword in lb_keywords):
+                etf_tickers.append((style, ticker))
+        else:
+            # For other styles, append without keyword check
+            etf_tickers.append((style, ticker))
 
 # all_symbols = list(set(etf_tickers + get_sp500_tickers())),
 
@@ -184,42 +207,124 @@ def get_stock_performance_sentiment(symbol):
           "neutral": average_neutral
       }
   }
+expense_aum_ratio = {}
 
+def parse_monetary_value(value):
+  # Regular expression to match the number and optional 'M' or 'B'
+  match = re.search(r"\$?([\d,]+\.?\d*)\s*([MB])?", value)
+  if match:
+    # Extract the numeric part and remove commas
+    number_str = match.group(1).replace(',', '')
+    number = float(number_str)
 
-def calculate_combined_risk_score(data, ticker):
-  # Volatility score (standard deviation of closing prices)
+    # Multiply by a million or billion if 'M' or 'B' is present
+    if match.group(2) == 'M':
+        number *= 1e6
+    elif match.group(2) == 'B':
+        number *= 1e9
+
+    return number
+
+def get_etf_expense_aum(etf_ticker):
+  try:
+    url = f"https://etfdb.com/etf/{etf_ticker}/#etf-ticker-profile"
+    response = requests.get(url)
+    doc = html.fromstring(response.content)
+  
+    # XPath to find the expense ratio
+    xpath_aum = '//*[@id="overview"]/div[1]/div/div[5]/div[1]/div/ul[2]/li[1]/span[2]/text()'
+    aum = doc.xpath(xpath_aum)
+  
+    xpath_exp_ratio = '//*[@id="overview"]/div[1]/div/div[1]/div[1]/div/div[4]/span[2]/text()'
+    expense_ratio = doc.xpath(xpath_exp_ratio)
+    print("exp ratio",etf_ticker, expense_ratio)
+    print("aum",etf_ticker, aum)
+  
+    expense_aum_ratio[symbol] = (
+      float(expense_ratio[0].replace("%", "")),
+      parse_monetary_value(aum[0])
+    )
+  
+    return (
+      float(expense_ratio[0].replace("%", "")),
+      parse_monetary_value(aum[0])
+    ) if aum else None
+  except Exception as e:
+    expense_aum_ratio[symbol] = (
+      0, 0
+    )
+    print("aum exp exception", e)
+    return (
+      0, 0
+    )
+pe_ratio_map = {}
+  
+def get_etf_pe_ratio(etf_ticker):
+  try:
+    url = f"https://etfdb.com/etf/{etf_ticker}/#etf-ticker-valuation-dividend"
+    response = requests.get(url)
+    doc = html.fromstring(response.content)
+  
+    # XPath to find the PE ratio
+    xpath_pe_ratio = '//*[@id="valuation-collapse"]/div/div[2]/div/div/div[1]/div[4]/text()'
+    xpath_avg_pe_ratio = '//*[@id="valuation-collapse"]/div/div[2]/div/div/div[2]/div[4]/text()'
+    pe_ratio = doc.xpath(xpath_pe_ratio)
+    avg_pe_ratio = doc.xpath(xpath_avg_pe_ratio)
+    print("pe ratio",etf_ticker, pe_ratio, avg_pe_ratio)
+    pe_ratio_map[etf_ticker] = (
+      float(pe_ratio[0]), float(avg_pe_ratio[0]))
+    return (float(pe_ratio[0]), float(avg_pe_ratio[0])) if pe_ratio and avg_pe_ratio else (None, None)
+  except Exception as e:
+    print("pe exception", e)
+    pe_ratio_map[etf_ticker] = (0,0)
+    return (
+      0, 0
+    )
+
+def calculate_combined_risk_score(data, ticker_symbol):
+  # etf_pe_ratio, category_avg_pe_ratio = pe_ratio_map[ticker_symbol]
+  
+  etf_pe_ratio = yf.Ticker(symbol).info['trailingPE'] if 'trailingPE' in yf.Ticker(symbol).info else 0
+  
+  # Standard deviation of closing prices as the volatility score
   volatility_score = data["Close"].std()
+  
+  # Fetch AUM and convert to a numeric scale if needed
+  # expense, aum = expense_aum_ratio[ticker_symbol]  # Example function to get AUM
+  # aum_score =  np.log(aum + 1) if aum != 0 else np.nan  # Larger AUM as lower risk
+  aum_score =  1
+  
+  # Fetch expense ratio
+  # expense_ratio, _aum = expense_aum_ratio[ticker_symbol]
+  # expense_score = expense_ratio if expense_ratio is not None else np.nan
+  expense_score = 1
+  
+  # if etf_pe_ratio <= category_avg_pe_ratio:
+  #   pe_ratio_score = 1  # No penalty if ETF's P/E is less than or equal to the category average
+  # else:
+  #   # Apply a penalty scaling as the ETF's P/E ratio exceeds the category average
+  #   pe_ratio_score = max(1 - (etf_pe_ratio / category_avg_pe_ratio - 1), 0)
 
-  # Assuming financials is a dict-like object with a 'debtToEquity' key
-  debt_to_equity = ticker.financials.get("debtToEquity", np.nan)
-  print(ticker, debt_to_equity)
-  leverage_score = debt_to_equity if not np.isnan(debt_to_equity) else np.nan
-
-  # Assuming ticker.info is a dict-like object with a 'marketCap' key
-  market_cap = ticker.info.get("marketCap", np.nan)
-  # Market cap score (inversely proportional to market cap, ensuring market cap is not zero)
-  mcap_score = (1 / market_cap) if market_cap != 0 else np.nan
-
-  # Create a NumPy array of individual risk scores (handle potential NaNs)
-  risk_scores = np.array([volatility_score, leverage_score, mcap_score])
+  pe_ratio_score = etf_pe_ratio
+    
+  # Combine risk scores, handling potential NaNs
+  risk_scores = np.array([volatility_score, aum_score, expense_score, pe_ratio_score])
   valid_risk_scores = risk_scores[~np.isnan(risk_scores)]
   
   # Weighted scores - adjust based on available scores
-  weights = np.array([0.4, 0.3, 0.3])[:len(valid_risk_scores)]
-  # Normalize weights to ensure they sum up to 1
+  weights = np.array([0.3, 0.25, 0.25, 0.2])[:len(valid_risk_scores)]
   normalized_weights = weights / np.sum(weights)
-
+  
   # Calculate combined risk score using dot product
-  combined_risk_score = np.dot(
-      normalized_weights,
-      valid_risk_scores) if valid_risk_scores.any() else np.nan
-
-  max_risk_score = 10  # Example maximum value for demonstration
+  combined_risk_score = np.dot(normalized_weights, valid_risk_scores) if valid_risk_scores.any() else np.nan
+  
+  # Inversion for safe score
+  max_risk_score = np.dot(normalized_weights, np.ones_like(valid_risk_scores) * 10)
   safe_score = (max_risk_score - combined_risk_score) / max_risk_score
-
+  
   # Ensure safe score is within 0-1 range
   safe_score_normalized = np.clip(safe_score, 0, 1)
-
+  
   return {
       "combined_risk_score": combined_risk_score,
       "safe_score_normalized": safe_score_normalized
@@ -369,20 +474,24 @@ def calculate_indicators(style, symbol):
 
   if data is None or ticker is None:
     return None
-  
 
+  # exp, aum = get_etf_expense_aum(symbol)
+  # get_etf_pe_ratio(symbol)
   
   # Initialize a new dictionary to store the results
   new_data = {}
   new_data['style'] = style
   new_data['symbol'] = symbol
   new_data['longName'] = ticker.info['longName']
-  new_data['peratio'] = 1 / ticker.info['trailingPE']
+  # peratio, avg_pe_ratio = pe_ratio_map[symbol]
+  new_data['peratio'] = 1 / (ticker.info['trailingPE'] if 'trailingPE' in ticker.info else 1)
+
+  # new_data['exp_ratio'] = exp
   # new_data['category'] = ticker.info['category']
   new_data['type'] = ticker.info['legalType']
   new_data['L.Year'] = data['Close'].iloc[0]
   new_data['Today'] = data['Close'].iloc[-1]
-  new_data['inverse_risk_score'] = calculate_combined_risk_score(data, ticker)['safe_score_normalized']
+  new_data['inverse_risk_score'] = calculate_combined_risk_score(data, symbol)['safe_score_normalized']
   # Create a new list to store article URLs
   # article_urls = [article.get('link') for article in ticker.news]
   # news = get_stock_performance_sentiment(symbol)
@@ -425,13 +534,24 @@ def calculate_indicators(style, symbol):
   volatility_60 = data['Close'].pct_change().rolling(window=60).std().iloc[-1]
   weights_60 = 1 / volatility_60
   new_data['volatility_60'] = weights_60 * rolling_returns_60
+  
+  new_data['Volume_30'] = data['Volume'].rolling(window=30).mean().iloc[-1]
+  # Calculate Volatility
+  rolling_returns_30 = data['Close'].pct_change().rolling(
+      window=30).mean().iloc[-1]
+  volatility_30 = data['Close'].pct_change().rolling(window=30).std().iloc[-1]
+  weights_30 = 1 / volatility_30
+  new_data['volatility_30'] = weights_30 * rolling_returns_30
   # new_data['overlap'] = overlap
   # print("XXXX", new_data)
   # Calculate composite score
-  weights = [0.15, 0.15, 0.20, 0.15, 0.10, 0.15, 0.10]
-  factors = ['15 day', '30 day', '60 day', 'volatility_60',
-      'inverse_risk_score', 'peratio', 'analysis_score'
-  ]
+  weights = [0.20, 0.15, 0.20, 0.15, 0.15, 0.15]  
+  if new_data['style'] == 'aggressive-growth':    
+      factors = ['15 day', '30 day', 'volatility_30', 
+                 'inverse_risk_score', 'fluctuation_60', 'analysis_score']
+  else:
+      factors = ['60 day', '90 day', 'volatility_60', 
+                 'inverse_risk_score', 'fluctuation_60', 'analysis_score']
   # print(new_data)
   new_data['Composite Score'] = np.dot(
       [new_data[factor] for factor in factors], weights)
@@ -483,11 +603,19 @@ def categorize_etf(row):
       return 'SPCG'
     elif row['style'] == 'aggressive-growth':
       return 'SPAG'
+    elif row['style'] == 'high-momentum':
+      return 'ONEHM'
+    elif row['style'] == 'low-beta':
+      return 'ONELB'
   else:
     if row['style'] == 'consistent-growth':
       return 'NSPCG'
     elif row['style'] == 'aggressive-growth':
       return 'NSPAG'
+    elif row['style'] == 'high-momentum':
+      return 'ONEHM'
+    elif row['style'] == 'low-beta':
+      return 'ONELB'
   return None
 
 top_etf_symbols_by_category = {}
@@ -568,9 +696,11 @@ def allocate_etfs(df, allocations):
 # Allocate ETFs based on specified portfolio percentages
 portfolio_allocations = {
     'SPCG': 50,
-    'SPAG': 20,
+    'SPAG': 15,
     'NSPCG': 20,
-    'NSPAG': 10
+    'NSPAG': 5,
+    'ONEHM': 5,
+    'ONELB': 5
 }
 
 allocated_etfs = allocate_etfs(filtered_etf_data, portfolio_allocations)
