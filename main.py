@@ -16,6 +16,7 @@ from etf_scraper import ETFScraper
 from pyetfdb_scraper.etf import ETF,load_etfs
 from lxml import html
 import re
+import math
 
 def get_sp500_tickers():
   """
@@ -593,12 +594,18 @@ ranked_etf_data = combined_etf_data.sort_values(by='Composite Score',
                                                 ascending=False)
 # ranked_sp_500_data = combined_sp_500_data.sort_values(by='Composite Score', ascending=False)
 
-ranked_etf_data = ranked_etf_data.round(3)
+# ranked_etf_data = ranked_etf_data.round(3)
 # ranked_sp_500_data = ranked_sp_500_data.round(2)
 
 # Filter and categorize ETFs correctly
 def categorize_etf(row):
-  if "S&P" in row['longName']:
+  if "Growth" in row['longName'] or "S&P 100" in row['longName']:
+    return "GROW"
+  elif "Momentum" in row['longName']:
+    return "ONEHM"
+  elif "Quality" in row['longName']:
+    return "QUAL"
+  elif "S&P" in row['longName']:
     if row['style'] == 'consistent-growth':
       return 'SPCG'
     elif row['style'] == 'aggressive-growth':
@@ -625,7 +632,8 @@ ranked_etf_data['category'] = ranked_etf_data.apply(categorize_etf, axis=1)
 # Exclude ETFs that don't fit into the specified categories
 filtered_etf_data = ranked_etf_data.dropna(subset=['category'])
 filtered_etf_data['overlap'] = None
-max_volume = filtered_etf_data['Volume_60'].max()
+
+
 # Sort ETFs within each category by their rank
 filtered_etf_data.sort_values(by=['category', 'Composite Score'],
                               ascending=[True, False],
@@ -633,7 +641,12 @@ filtered_etf_data.sort_values(by=['category', 'Composite Score'],
 
 for index, row in filtered_etf_data.iterrows():
     category = row['category']
+    volume60 = row['Volume_60']
     current_etf_symbol = row['symbol']
+
+    # Calculate the logarithm base 10 of the number
+    log_num = math.log10(volume60)
+    volume_score = (log_num - 1) * 100 / (math.log10(10**9) - 1) + 1
 
     # Check if the top ETF symbol for the current category is already noted
     if category not in top_etf_symbols_by_category:
@@ -647,8 +660,8 @@ for index, row in filtered_etf_data.iterrows():
         overlap_percentage = calculate_overlap_percentage(current_etf_symbol, top_etf_symbol)
         filtered_etf_data.at[index, 'overlap'] = overlap_percentage
 
-filtered_etf_data['rank_metric'] = 0.20 * filtered_etf_data[
-    'Composite Score'] + 0.10 * (filtered_etf_data['Volume_60'] / max_volume) + 0.70 * (1-filtered_etf_data['overlap'])
+filtered_etf_data['rank_metric'] = 0.45 * filtered_etf_data[
+    'Composite Score'] + 0.20 * (volume_score) + 0.35 * (1-filtered_etf_data['overlap'])
 
 # Sort ETFs within each category by their rank
 filtered_etf_data.sort_values(by=['category', 'rank_metric'],
@@ -694,10 +707,11 @@ def allocate_etfs(df, allocations):
 
 # Allocate ETFs based on specified portfolio percentages
 portfolio_allocations = {
-    'SPCG': (40, 1),
-    'SPAG': (20, 1),
-    'NSPCG': (20,1),
-    'NSPAG': (10,1),
+    'SPCG': (30, 1),
+    # 'SPAG': (20, 1),
+    'GROW': (20,1),
+    'QUAL': (20,1),
+    'NSPAG': (20,2),
     'ONEHM': (5,1),
     # 'ONELB': (0,0),
     'CASH': (5,1)
@@ -733,7 +747,7 @@ print(final_portfolio)
 # Get the current date
 current_date = datetime.today().strftime('%Y-%m-%d')
 # Save the DataFrame as a CSV file with the current date in the filename
-ranked_etf_data.to_csv(f'ranked_etf_data{current_date}.csv')
+filtered_etf_data.to_csv(f'filtered_etf_data{current_date}.csv')
 final_portfolio.to_csv(f'final_portfolio_{current_date}.csv')
 
 with pd.option_context('display.max_rows', None, 'display.max_columns', None):
