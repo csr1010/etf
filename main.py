@@ -647,8 +647,8 @@ for index, row in filtered_etf_data.iterrows():
         overlap_percentage = calculate_overlap_percentage(current_etf_symbol, top_etf_symbol)
         filtered_etf_data.at[index, 'overlap'] = overlap_percentage
 
-filtered_etf_data['rank_metric'] = 0.70 * filtered_etf_data[
-    'Composite Score'] + 0.10 * (filtered_etf_data['Volume_60'] / max_volume) + 0.20 * (1-filtered_etf_data['overlap'])
+filtered_etf_data['rank_metric'] = 0.20 * filtered_etf_data[
+    'Composite Score'] + 0.10 * (filtered_etf_data['Volume_60'] / max_volume) + 0.70 * (1-filtered_etf_data['overlap'])
 
 # Sort ETFs within each category by their rank
 filtered_etf_data.sort_values(by=['category', 'rank_metric'],
@@ -684,8 +684,7 @@ def allocate_etfs(df, allocations):
       # Select ETFs within the current category
       category_etfs = df[df['category'] == category]
       # Calculate the number of ETFs to select based on the allocation percentage
-      num_etfs = round(len(category_etfs) * allocation / 100)
-      num_etfs = max(num_etfs, 1)  # Ensure at least one ETF is selected
+      weight, num_etfs = allocation
   
       # Concatenate the selected ETFs to the allocated ETFs DataFrame
       allocated_etfs = pd.concat([allocated_etfs, category_etfs.head(num_etfs)])
@@ -695,20 +694,27 @@ def allocate_etfs(df, allocations):
 
 # Allocate ETFs based on specified portfolio percentages
 portfolio_allocations = {
-    'SPCG': 55,
-    'SPAG': 15,
-    'NSPCG': 15,
-    'NSPAG': 5,
-    'ONEHM': 5,
-    'ONELB': 5
+    'SPCG': (40, 1),
+    'SPAG': (20, 1),
+    'NSPCG': (10,1),
+    'NSPAG': (10,1),
+    'ONEHM': (5,1),
+    'ONELB': (5,1),
+    'CASH': (10,1)
 }
 
+# Specifying default values for each column
+default_values = {'symbol': 'CASH', 'category': 'CASH', 'rank_metric': 0, 'longName': "Unallocated Cash", 'overlap': 0, 'Composite Score': 0}
+# Create a DataFrame from the new row data
+new_row = pd.DataFrame([default_values])
+# Adding the row with default values
+filtered_etf_data= pd.concat([filtered_etf_data, new_row], ignore_index=True)
 allocated_etfs = allocate_etfs(filtered_etf_data, portfolio_allocations)
 
 # Calculate the investment amount for each selected ETF
 total_investment = 15000
 allocated_etfs['investment_amount'] = allocated_etfs['category'].apply(
-    lambda x: total_investment * (portfolio_allocations[x] / 100))
+    lambda x: total_investment * (portfolio_allocations[x][0] / 100))
 
 # Preparing the final display table
 final_portfolio = allocated_etfs[[
@@ -737,7 +743,7 @@ with pd.option_context('display.max_rows', None, 'display.max_columns', None):
 content_to_write = f"Data as of {current_date}:\n\n{markdown_str}"
 
 # Write the combined content to readme.md
-with open('readme.md', 'w') as file:
+with open('readme.md', 'a') as file:
     file.write(content_to_write)
 
 # ranked_sp_500_data.to_csv(f'ranked_sp_500_data{current_date}.csv')
