@@ -695,9 +695,9 @@ def allocate_etfs(df, allocations):
 
 # Allocate ETFs based on specified portfolio percentages
 portfolio_allocations = {
-    'SPCG': 50,
+    'SPCG': 55,
     'SPAG': 15,
-    'NSPCG': 20,
+    'NSPCG': 15,
     'NSPAG': 5,
     'ONEHM': 5,
     'ONELB': 5
