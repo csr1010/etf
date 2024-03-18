@@ -740,7 +740,7 @@ with pd.option_context('display.max_rows', None, 'display.max_columns', None):
   markdown_str = final_portfolio.to_markdown(index=False)
 
 # Combine the date and the markdown table in the content to be written to the file
-content_to_write = f"\nData as of {current_date}:\n\n{markdown_str}"
+content_to_write = f"\n\n Data as of {current_date}:\n\n{markdown_str}"
 
 # Write the combined content to readme.md
 with open('readme.md', 'a') as file:
