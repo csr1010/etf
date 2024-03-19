@@ -730,7 +730,7 @@ allocated_etfs['investment_amount'] = allocated_etfs['category'].apply(
 
 # Preparing the final display table
 final_portfolio = allocated_etfs[[
-    'symbol', 'rank_metric', 'longName', 'category', 'investment_amount', 'overlap', 'Composite Score'
+    'symbol', 'longName', 'rank_metric', '15 day', '1Y', 'category', 'investment_amount', 'Max60', 'Min60'
 ]].copy()
 
 # Correctly calculate the investment amount by distributing within categories evenly
