@@ -36,7 +36,7 @@ def get_sp500_tickers():
 sector_url = "https://etfdb.com/etfs/sector/#sector-power-rankings__return-leaderboard&sort_name=aum_position&sort_order=asc&page=1"
 
 investment_styles = [
-    'consistent-growth', 'aggressive-growth', 'low-beta', 'high-momentum'
+    'consistent-growth', 'aggressive-growth', 'high-momentum'
 ]
 print('investment_styles', investment_styles)
 
@@ -546,13 +546,8 @@ def calculate_indicators(style, symbol):
   # new_data['overlap'] = overlap
   # print("XXXX", new_data)
   # Calculate composite score
-  weights = [0.20, 0.15, 0.20, 0.15, 0.15, 0.15]  
-  if new_data['style'] == 'aggressive-growth':    
-      factors = ['15 day', '30 day', 'volatility_30', 
-                 'inverse_risk_score', 'fluctuation_60', 'analysis_score']
-  else:
-      factors = ['60 day', '90 day', 'volatility_60', 
-                 'inverse_risk_score', 'fluctuation_60', 'analysis_score']
+  weights = [0.15, 0.05, 0.20, 0.25, 0.15, 0.20]  
+  factors = ['15 day', '60 day', '90 day', 'volatility_60', 'fluctuation_60', 'analysis_score']
   # print(new_data)
   new_data['Composite Score'] = np.dot(
       [new_data[factor] for factor in factors], weights)
@@ -599,19 +594,20 @@ ranked_etf_data = combined_etf_data.sort_values(by='Composite Score',
 
 # Filter and categorize ETFs correctly
 def categorize_etf(row):
-  if "Growth" in row['longName'] or "S&P 100" in row['longName']:
+  if "Sector" in row['longName'] or "Semiconductor" in row['longName']:
+    return "SECTR"
+  
+  if "Growth" in row['longName']:
     return "GROW"
-  elif "Momentum" in row['longName']:
-    return "ONEHM"
   elif "Quality" in row['longName']:
     return "QUAL"
   elif "S&P" in row['longName']:
     if row['style'] == 'consistent-growth':
-      return 'SPCG'
+      return 'STBL'
     elif row['style'] == 'aggressive-growth':
       return 'SPAG'
     elif row['style'] == 'high-momentum':
-      return 'ONEHM'
+      return 'INTLHM'
     elif row['style'] == 'low-beta':
       return 'ONELB'
   else:
@@ -620,7 +616,7 @@ def categorize_etf(row):
     elif row['style'] == 'aggressive-growth':
       return 'NSPAG'
     elif row['style'] == 'high-momentum':
-      return 'ONEHM'
+      return 'INTLHM'
     elif row['style'] == 'low-beta':
       return 'ONELB'
   return None
@@ -642,26 +638,26 @@ filtered_etf_data.sort_values(by=['category', 'Composite Score'],
 for index, row in filtered_etf_data.iterrows():
     category = row['category']
     volume60 = row['Volume_60']
+    cs = row['Composite Score']
     current_etf_symbol = row['symbol']
 
     # Calculate the logarithm base 10 of the number
     log_num = math.log10(volume60)
     volume_score = (log_num - 1) * 100 / (math.log10(10**9) - 1) + 1
-
-    # Check if the top ETF symbol for the current category is already noted
+    overlap_percentage = 0.001
     if category not in top_etf_symbols_by_category:
         # If not, the current ETF is the top ETF for its category (due to sorting)
         top_etf_symbols_by_category[category] = current_etf_symbol
         # The top ETF has 100% overlap with itself by definition
-        filtered_etf_data.at[index, 'overlap'] = 0.001
+        overlap_percentage = 0.001
+        filtered_etf_data.at[index, 'overlap'] = overlap_percentage
     else:
         # For other ETFs, calculate the overlap with the top ETF of their category
         top_etf_symbol = top_etf_symbols_by_category[category]
         overlap_percentage = calculate_overlap_percentage(current_etf_symbol, top_etf_symbol)
         filtered_etf_data.at[index, 'overlap'] = overlap_percentage
 
-filtered_etf_data['rank_metric'] = 0.45 * filtered_etf_data[
-    'Composite Score'] + 0.20 * (volume_score) + 0.35 * (1-filtered_etf_data['overlap'])
+    filtered_etf_data.at[index, 'rank_metric'] =  0.45 * cs + 0.05 * volume_score + 0.50 * overlap_percentage
 
 # Sort ETFs within each category by their rank
 filtered_etf_data.sort_values(by=['category', 'rank_metric'],
@@ -670,9 +666,10 @@ filtered_etf_data.sort_values(by=['category', 'rank_metric'],
 print(filtered_etf_data)
 
 filtered_etf_data['overlap'] = filtered_etf_data['overlap'].astype(float)
+def trim_decimals(row):
+  return math.floor(row['overlap'] * 100) / 100
 
-# Step 1: Round the 'overlap' values to two decimal places
-filtered_etf_data['overlap_rounded'] = filtered_etf_data['overlap'].round(2)
+filtered_etf_data['overlap_rounded'] = filtered_etf_data.apply(trim_decimals, axis=1)
 
 # Step 2: Mark duplicates in 'overlap_rounded' within each 'category'
 # keep=False marks all duplicates as True, including the first occurrence
@@ -707,14 +704,15 @@ def allocate_etfs(df, allocations):
 
 # Allocate ETFs based on specified portfolio percentages
 portfolio_allocations = {
-    'SPCG': (30, 1),
+    'STBL': (30, 1),
     # 'SPAG': (20, 1),
     'GROW': (20,1),
     'QUAL': (20,1),
-    'NSPAG': (20,2),
-    'ONEHM': (5,1),
+    'NSPAG': (20,1),
+    'INTLHM': (10,1),
+    # 'SECTR': (0,0),
     # 'ONELB': (0,0),
-    'CASH': (5,1)
+    # 'CASH': (0,1)
 }
 
 # Specifying default values for each column
