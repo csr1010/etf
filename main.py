@@ -657,7 +657,7 @@ for index, row in filtered_etf_data.iterrows():
         overlap_percentage = calculate_overlap_percentage(current_etf_symbol, top_etf_symbol)
         filtered_etf_data.at[index, 'overlap'] = overlap_percentage
 
-    filtered_etf_data.at[index, 'rank_metric'] =  0.45 * cs + 0.05 * volume_score + 0.50 * overlap_percentage
+    filtered_etf_data.at[index, 'rank_metric'] =  0.50 * cs + 0.10 * volume_score + 0.40 * overlap_percentage
 
 # Sort ETFs within each category by their rank
 filtered_etf_data.sort_values(by=['category', 'rank_metric'],
@@ -708,9 +708,9 @@ portfolio_allocations = {
     # 'SPAG': (20, 1),
     'GROW': (20,1),
     'QUAL': (20,1),
-    'NSPAG': (20,1),
+    'NSPAG': (15,1),
     'INTLHM': (10,1),
-    # 'SECTR': (0,0),
+    'SECTR': (5,1),
     # 'ONELB': (0,0),
     # 'CASH': (0,1)
 }
