@@ -36,7 +36,7 @@ def get_sp500_tickers():
 sector_url = "https://etfdb.com/etfs/sector/#sector-power-rankings__return-leaderboard&sort_name=aum_position&sort_order=asc&page=1"
 
 investment_styles = [
-    'consistent-growth', 'aggressive-growth', 'high-momentum'
+    'socially-responsible', 'consistent-growth', 'aggressive-growth', 'high-momentum'
 ]
 print('investment_styles', investment_styles)
 
@@ -85,8 +85,8 @@ sector_specific_url = "https://etfdb.com/etfs/sector/{sector}/?search[inverse]=f
 investment_style_url = 'https://etfdb.com/etfs/investment-style/{style}/?search[inverse]=false&search[leveraged]=false#etfs&sort_name=assets_under_management&sort_order=desc&page=1'
 # Scrape ETF symbols for each of the top 4 sectors
 etf_tickers = []
-hm_keywords = ["global", "intl", "international"]
-lb_keywords = ["bond"]
+hm_keywords = ["global", "intl", "international", "world"]
+lb_keywords = ["bond", "treasury", "dividend"]
 
 for style in investment_styles:
     url = investment_style_url.format(style=style)
@@ -546,8 +546,10 @@ def calculate_indicators(style, symbol):
   # new_data['overlap'] = overlap
   # print("XXXX", new_data)
   # Calculate composite score
-  weights = [0.15, 0.05, 0.20, 0.25, 0.15, 0.20]  
-  factors = ['15 day', '60 day', '90 day', 'volatility_60', 'fluctuation_60', 'analysis_score']
+  avg_daily_volume = data['Volume'].mean()
+  new_data['volume_score'] = (math.log10(avg_daily_volume) - 1) * 100 / (math.log10(10**9) - 1) + 1
+  weights = [0.15, 0.05, 0.15, 0.05, 0.25, 0.15, 0.15, 0.05]  
+  factors = ['15 day', '60 day', '90 day', '1Y', 'volatility_60', 'fluctuation_60', 'analysis_score', 'volume_score']
   # print(new_data)
   new_data['Composite Score'] = np.dot(
       [new_data[factor] for factor in factors], weights)
@@ -594,31 +596,43 @@ ranked_etf_data = combined_etf_data.sort_values(by='Composite Score',
 
 # Filter and categorize ETFs correctly
 def categorize_etf(row):
-  if "Sector" in row['longName'] or "Semiconductor" in row['longName']:
+  if "100 ETF" in row['longName']:
+    return "EXCLUD"
+  
+  if "Sector" in row['longName'] or "Semiconductor" in row['longName'] or "Health" in row['longName']:
     return "SECTR"
+
+  if ('Intl' in row['longName'] or 'International' in row['longName'] or 'World' in row['longName']):
+    return 'INTL'
+
+  if 'Momentum' in row['longName']:
+    return 'MTM'
+
+  if "Bond" in row['longName'] or "Dividend" in row['longName'] or "Treasury" in row['longName']:
+    return "YIELD"
   
   if "Growth" in row['longName']:
     return "GROW"
   elif "Quality" in row['longName']:
     return "QUAL"
   elif "S&P" in row['longName']:
-    if row['style'] == 'consistent-growth':
+    if row['style'] == 'consistent-growth' or row['style'] == 'socially-responsible':
       return 'STBL'
     elif row['style'] == 'aggressive-growth':
       return 'SPAG'
     elif row['style'] == 'high-momentum':
-      return 'INTLHM'
+      return 'MTM'
     elif row['style'] == 'low-beta':
-      return 'ONELB'
+      return 'YIELD'
   else:
-    if row['style'] == 'consistent-growth':
+    if row['style'] == 'consistent-growth' or row['style'] == 'socially-responsible':
       return 'NSPCG'
     elif row['style'] == 'aggressive-growth':
       return 'NSPAG'
     elif row['style'] == 'high-momentum':
-      return 'INTLHM'
+      return 'MTM'
     elif row['style'] == 'low-beta':
-      return 'ONELB'
+      return 'YIELD'
   return None
 
 top_etf_symbols_by_category = {}
@@ -637,13 +651,13 @@ filtered_etf_data.sort_values(by=['category', 'Composite Score'],
 
 for index, row in filtered_etf_data.iterrows():
     category = row['category']
-    volume60 = row['Volume_60']
+    # volume60 = row['Volume_60']
     cs = row['Composite Score']
     current_etf_symbol = row['symbol']
 
     # Calculate the logarithm base 10 of the number
-    log_num = math.log10(volume60)
-    volume_score = (log_num - 1) * 100 / (math.log10(10**9) - 1) + 1
+    # log_num = math.log10(volume60)
+    # volume_score = (log_num - 1) * 100 / (math.log10(10**9) - 1) + 1
     overlap_percentage = 0.001
     if category not in top_etf_symbols_by_category:
         # If not, the current ETF is the top ETF for its category (due to sorting)
@@ -657,7 +671,7 @@ for index, row in filtered_etf_data.iterrows():
         overlap_percentage = calculate_overlap_percentage(current_etf_symbol, top_etf_symbol)
         filtered_etf_data.at[index, 'overlap'] = overlap_percentage
 
-    filtered_etf_data.at[index, 'rank_metric'] =  0.50 * cs + 0.10 * volume_score + 0.40 * overlap_percentage
+    filtered_etf_data.at[index, 'rank_metric'] =  0.60 * cs + 0.40 * (1-overlap_percentage)
 
 # Sort ETFs within each category by their rank
 filtered_etf_data.sort_values(by=['category', 'rank_metric'],
@@ -679,7 +693,7 @@ is_unique_within_category = ~filtered_etf_data.duplicated(subset=['category', 'o
 # Step 3: Filter out the duplicates based on the above condition
 filtered_etf_data = filtered_etf_data[is_unique_within_category]
 
-filtered_etf_data.reset_index(drop=True, inplace=True)
+# filtered_etf_data.reset_index(drop=True, inplace=True)
 
 # # Optionally, you can drop the 'overlap_rounded' column if it's no longer needed
 # filtered_etf_data = filtered_etf_data_unique.drop(columns=['overlap_rounded'])
@@ -706,13 +720,14 @@ def allocate_etfs(df, allocations):
 portfolio_allocations = {
     'STBL': (30, 1),
     # 'SPAG': (20, 1),
-    'GROW': (20,1),
-    'QUAL': (20,1),
+    'GROW': (15,1),
+    'QUAL': (15,1),
     'NSPAG': (15,1),
-    'INTLHM': (10,1),
+    'MTM': (5,1),
+    'INTL': (5,1),
     'SECTR': (5,1),
-    # 'ONELB': (0,0),
-    # 'CASH': (0,1)
+    # 'YIELD': (0,0),
+    'CASH': (10,1)
 }
 
 # Specifying default values for each column
