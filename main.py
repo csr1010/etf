@@ -496,8 +496,10 @@ def calculate_indicators(style, symbol):
   new_data['analysis_score'] = trend_anlaysis['overall_score']
   new_data['market'] = trend_anlaysis['situation']
   new_data['trend'] = trend_anlaysis['trend']
+  new_data['7 day'] = ((data['Close'].iloc[-1] - data['Close'].iloc[-15]) /
+    data['Close'].iloc[-7]) * 100
   new_data['15 day'] = ((data['Close'].iloc[-1] - data['Close'].iloc[-15]) /
-                        data['Close'].iloc[-7]) * 100
+                        data['Close'].iloc[-15]) * 100
   new_data['30 day'] = ((data['Close'].iloc[-1] - data['Close'].iloc[-30]) /
                         data['Close'].iloc[-30]) * 100
   new_data['60 day'] = ((data['Close'].iloc[-1] - data['Close'].iloc[-60]) /
@@ -773,7 +775,7 @@ allocated_etfs = allocate_investment(allocated_etfs)
 
 # Preparing the final display table
 final_portfolio = allocated_etfs[[
-    'symbol', 'investment_amount', 'longName', 'rank_metric', '15 day', '1Y', 'main_category', 'category', 'Max60', 'Min60'
+    'symbol', 'investment_amount', 'rank_metric', '7 day', '1Y', 'main_category', 'category'
 ]].copy()
 
 # Correctly calculate the investment amount by distributing within categories evenly
