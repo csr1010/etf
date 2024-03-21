@@ -11,16 +11,14 @@
 | SMH      | VanEck Semiconductor ETF              |      13.2095  |  3.79572   | 73.7033 | SECTR      |                 750 | 234.17  | 164.99  |
 
 
+ Data as of 2024-03-21:
 
- Data as of 2024-03-20:
-
-| symbol   | longName                                         |   rank_metric |     15 day |       1Y | category   |   investment_amount |   Max60 |    Min60 |
-|:---------|:-------------------------------------------------|--------------:|-----------:|---------:|:-----------|--------------------:|--------:|---------:|
-| SPY      | SPDR S&P 500 ETF Trust                           |       6.28111 |   2.1617   |  31.1519 | STBL       |                4500 | 515.71  | 465.833  |
-| SCHG     | Schwab U.S. Large-Cap Growth ETF                 |       6.29629 |   1.96338  |  46.3184 | GROW       |                2250 |  92.26  |  80.6    |
-| QUAL     | iShares MSCI USA Quality Factor ETF              |       5.98719 |   2.2276   |  36.4529 | QUAL       |                2250 | 163.56  | 144.62   |
-| QQQ      | Invesco QQQ Trust                                |       6.29162 |   0.887067 |  42.2635 | NSPAG      |                2250 | 445.022 | 395.757  |
-| MTUM     | iShares MSCI USA Momentum Factor ETF             |       6.66555 |   2.39069  |  36.5715 | MTM        |                 750 | 189.2   | 152.32   |
-| IDMO     | Invesco S&P International Developed Momentum ETF |       6.16343 |   5.28119  |  35.6224 | INTL       |                 750 |  41.39  |  35.8935 |
-| SMH      | VanEck Semiconductor ETF                         |      10.1709  |   4.70178  |  72.7747 | SECTR      |                 750 | 234.17  | 164.99   |
-| CASH     | Unallocated Cash                                 |       0       | nan        | nan      | CASH       |                1500 | nan     | nan      |
+| symbol   | longName                                         |   rank_metric |    15 day |       1Y | main_category   | category   |   investment_amount |   Max60 |    Min60 |
+|:---------|:-------------------------------------------------|--------------:|----------:|---------:|:----------------|:-----------|--------------------:|--------:|---------:|
+| QQQ      | Invesco QQQ Trust                                |       6.68284 |   1.20741 |  45.9347 | EXPERIMENTAL    | AGRSV      |                2453 | 445.022 | 395.757  |
+| MTUM     | iShares MSCI USA Momentum Factor ETF             |       7.03461 |   2.46445 |  40.4689 | EXPERIMENTAL    | MTM        |                2583 | 189.2   | 152.32   |
+| IDMO     | Invesco S&P International Developed Momentum ETF |       6.42932 |   5.78131 |  37.3928 | EXPERIMENTAL    | INTL       |                2360 |  41.85  |  35.8935 |
+| SPY      | SPDR S&P 500 ETF Trust                           |       6.6431  |   2.7124  |  34.6605 | REGULAR         | STBL       |                2439 | 520.48  | 465.833  |
+| SCHG     | Schwab U.S. Large-Cap Growth ETF                 |       6.69985 |   2.44754 |  50.0403 | REGULAR         | GROW       |                2460 |  93.16  |  80.5152 |
+| QUAL     | iShares MSCI USA Quality Factor ETF              |       6.36786 |   2.84998 |  40.1105 | REGULAR         | QUAL       |                2338 | 164.94  | 144.62   |
+| CASH     | Unallocated Cash                                 |       1       | nan       | nan      | REGULAR         | CASH       |                 367 | nan     | nan      |

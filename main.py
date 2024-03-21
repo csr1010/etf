@@ -82,34 +82,27 @@ def scrape_etf_symbols(url):
 
 # Define the sector-specific URL
 sector_specific_url = "https://etfdb.com/etfs/sector/{sector}/?search[inverse]=false&search[leveraged]=false#etfs__returns&sort_name=assets_under_management&sort_order=desc&page=1"
-investment_style_url = 'https://etfdb.com/etfs/investment-style/{style}/?search[inverse]=false&search[leveraged]=false#etfs&sort_name=assets_under_management&sort_order=desc&page=1'
+investment_style_url = 'https://etfdb.com/etfs/investment-style/{style}/?search[inverse]=false&search[leveraged]=false#etfs&sort_name=assets_under_management&sort_order=desc&page={page}'
 # Scrape ETF symbols for each of the top 4 sectors
 etf_tickers = []
 hm_keywords = ["global", "intl", "international", "world"]
 lb_keywords = ["bond", "treasury", "dividend"]
 
 for style in investment_styles:
-    url = investment_style_url.format(style=style)
-    tickers = scrape_etf_symbols(url)
-    for ticker, name in tickers:
-        # Convert name to lowercase for case-insensitive comparison
-        name_lower = name.lower()
-        # print(style, ticker, name)
-        # For 'high-momentum' style, check if name contains any of the keywords
-        if style == "high-momentum":
-             # print(style, ticker, name_lower)
-            # Use any() to check if any keyword is in the ETF name
-            if any(keyword in name_lower for keyword in hm_keywords):
-                etf_tickers.append((style, ticker))
-        elif style == "low-beta":
-             # print(style, ticker, name_lower)
-            # Use any() to check if any keyword is in the ETF name
-            if any(keyword in name_lower for keyword in lb_keywords):
-                etf_tickers.append((style, ticker))
-        else:
-            # For other styles, append without keyword check
-            etf_tickers.append((style, ticker))
-
+    pages = [1,2]
+    for page in pages:
+      url = investment_style_url.format(style=style, page=page)
+      tickers = scrape_etf_symbols(url)
+      for ticker, name in tickers:
+          # Convert name to lowercase for case-insensitive comparison
+          name_lower = name.lower()
+          if style == "high-momentum":
+              if any(keyword in name_lower for keyword in hm_keywords):
+                  etf_tickers.append((style, ticker))
+          else:
+              # For other styles, append without keyword check
+              etf_tickers.append((style, ticker))
+  
 # all_symbols = list(set(etf_tickers + get_sp500_tickers())),
 
 # all_symbols = get_sp100_tickers();
@@ -596,44 +589,36 @@ ranked_etf_data = combined_etf_data.sort_values(by='Composite Score',
 
 # Filter and categorize ETFs correctly
 def categorize_etf(row):
-  if "100 ETF" in row['longName']:
-    return "EXCLUD"
+  categories = [
+      (["100 ETF", "Portfolio S&P 500"], "EXCLD"),
+      (["Gold", "Commodity"], "COMD"),
+      (["Sector", "Semiconductor", "Health", "Medical"], "SECTR"),
+      (["Global", "Intl", "International", "World", "Developed", "Emerging", "Japan", "Taiwan", "China"], "INTL"),
+      (["Momentum"], "MTM"),
+      (["Bond", "Dividend", "Treasury", "low-beta"], "YIELD"),
+      (["Growth"], "GROW"),
+      (["Quality"], "QUAL"),
+      (["Mega Cap", "MidCap", "Mid Cap", "Small Cap", "Large Cap", "Mid-Cap"], "CAPS"),
+      (["aggressive-growth"], "AGRSV")
+  ]
+  for keywords, category in categories:
+    if any(keyword in row['longName'] for keyword in keywords):
+        return category
   
-  if "Sector" in row['longName'] or "Semiconductor" in row['longName'] or "Health" in row['longName']:
-    return "SECTR"
+  if row['style'] == 'high-momentum':
+    return "MTM"
 
-  if ('Intl' in row['longName'] or 'International' in row['longName'] or 'World' in row['longName']):
-    return 'INTL'
-
-  if 'Momentum' in row['longName']:
-    return 'MTM'
-
-  if "Bond" in row['longName'] or "Dividend" in row['longName'] or "Treasury" in row['longName']:
-    return "YIELD"
-  
-  if "Growth" in row['longName']:
-    return "GROW"
-  elif "Quality" in row['longName']:
-    return "QUAL"
-  elif "S&P" in row['longName']:
+  if row['style'] == 'aggressive-growth':
+    return "AGRSV"
+    
+  if "S&P" in row['longName']:
     if row['style'] == 'consistent-growth' or row['style'] == 'socially-responsible':
       return 'STBL'
-    elif row['style'] == 'aggressive-growth':
-      return 'SPAG'
-    elif row['style'] == 'high-momentum':
-      return 'MTM'
-    elif row['style'] == 'low-beta':
-      return 'YIELD'
   else:
     if row['style'] == 'consistent-growth' or row['style'] == 'socially-responsible':
       return 'NSPCG'
-    elif row['style'] == 'aggressive-growth':
-      return 'NSPAG'
-    elif row['style'] == 'high-momentum':
-      return 'MTM'
-    elif row['style'] == 'low-beta':
-      return 'YIELD'
-  return None
+    
+  return 'EXCLD'
 
 top_etf_symbols_by_category = {}
 
@@ -650,28 +635,28 @@ filtered_etf_data.sort_values(by=['category', 'Composite Score'],
                               inplace=True)
 
 for index, row in filtered_etf_data.iterrows():
-    category = row['category']
-    # volume60 = row['Volume_60']
-    cs = row['Composite Score']
-    current_etf_symbol = row['symbol']
+  category = row['category']
+  # volume60 = row['Volume_60']
+  cs = row['Composite Score']
+  current_etf_symbol = row['symbol']
 
-    # Calculate the logarithm base 10 of the number
-    # log_num = math.log10(volume60)
-    # volume_score = (log_num - 1) * 100 / (math.log10(10**9) - 1) + 1
-    overlap_percentage = 0.001
-    if category not in top_etf_symbols_by_category:
-        # If not, the current ETF is the top ETF for its category (due to sorting)
-        top_etf_symbols_by_category[category] = current_etf_symbol
-        # The top ETF has 100% overlap with itself by definition
-        overlap_percentage = 0.001
-        filtered_etf_data.at[index, 'overlap'] = overlap_percentage
-    else:
-        # For other ETFs, calculate the overlap with the top ETF of their category
-        top_etf_symbol = top_etf_symbols_by_category[category]
-        overlap_percentage = calculate_overlap_percentage(current_etf_symbol, top_etf_symbol)
-        filtered_etf_data.at[index, 'overlap'] = overlap_percentage
+  # Calculate the logarithm base 10 of the number
+  # log_num = math.log10(volume60)
+  # volume_score = (log_num - 1) * 100 / (math.log10(10**9) - 1) + 1
+  overlap_percentage = 0.001
+  if category not in top_etf_symbols_by_category:
+      # If not, the current ETF is the top ETF for its category (due to sorting)
+      top_etf_symbols_by_category[category] = current_etf_symbol
+      # The top ETF has 100% overlap with itself by definition
+      overlap_percentage = 0.001
+      filtered_etf_data.at[index, 'overlap'] = overlap_percentage
+  else:
+      # For other ETFs, calculate the overlap with the top ETF of their category
+      top_etf_symbol = top_etf_symbols_by_category[category]
+      overlap_percentage = calculate_overlap_percentage(current_etf_symbol, top_etf_symbol)
+      filtered_etf_data.at[index, 'overlap'] = overlap_percentage
 
-    filtered_etf_data.at[index, 'rank_metric'] =  0.60 * cs + 0.40 * (1-overlap_percentage)
+  filtered_etf_data.at[index, 'rank_metric'] =  0.60 * cs + 0.40 * (1-overlap_percentage)
 
 # Sort ETFs within each category by their rank
 filtered_etf_data.sort_values(by=['category', 'rank_metric'],
@@ -715,46 +700,86 @@ def allocate_etfs(df, allocations):
   
   return allocated_etfs
 
-
 # Allocate ETFs based on specified portfolio percentages
 portfolio_allocations = {
-    'STBL': (30, 1),
-    # 'SPAG': (20, 1),
-    'GROW': (15,1),
-    'QUAL': (15,1),
-    'NSPAG': (15,1),
-    'MTM': (5,1),
-    'INTL': (5,1),
-    'SECTR': (5,1),
-    # 'YIELD': (0,0),
-    'CASH': (10,1)
+    # Regular
+    'STBL': (.45, 1),
+    'GROW': (.10,1),
+    'QUAL': (.10,1),
+    # 'NSPCG': (.5,2),
+    # 'CAPS': (.5,2),
+    # Experimentation
+    'AGRSV': (.10,1),
+    'MTM': (.5,1),
+    'INTL': (.5,1),
+    # 'SECTR': (.5,2),
+    # future bonds, commodity, real estate, RIET, dividents
+    # 'YIELD': (5,1)
+    # balance
+    'CASH': (0,1)
 }
 
 # Specifying default values for each column
-default_values = {'symbol': 'CASH', 'category': 'CASH', 'rank_metric': 0, 'longName': "Unallocated Cash", 'overlap': 0, 'Composite Score': 0}
+default_values = {'symbol': 'CASH', 'category': 'CASH', 'rank_metric': 1, 'longName': "Unallocated Cash", 'overlap': 0, 'Composite Score': 0}
 # Create a DataFrame from the new row data
 new_row = pd.DataFrame([default_values])
 # Adding the row with default values
 filtered_etf_data= pd.concat([filtered_etf_data, new_row], ignore_index=True)
-allocated_etfs = allocate_etfs(filtered_etf_data, portfolio_allocations)
 
+allocated_etfs = allocate_etfs(filtered_etf_data, portfolio_allocations)
 # Calculate the investment amount for each selected ETF
 total_investment = 15000
-allocated_etfs['investment_amount'] = allocated_etfs['category'].apply(
-    lambda x: total_investment * (portfolio_allocations[x][0] / 100))
+# allocated_etfs['investment_amount'] = allocated_etfs['category'].apply(
+#     lambda x: total_investment * (portfolio_allocations[x][0] / 100))
+
+# Create a new column in df called main_category
+allocated_etfs['main_category'] = np.where(allocated_etfs['category'].isin(['AGRSV', 'MTM', 'INTL', 'SECTR']), 'EXPERIMENTAL', 'REGULAR')
+
+def allocate_investment(df):
+  # Calculate the sum of rank_metric for each main category
+  main_category_rank_sum = df.groupby('main_category')['rank_metric'].sum()
+
+  # Calculate the total rank_metric for all ETFs
+  total_rank_metric = df['rank_metric'].sum()
+
+  # Calculate the percentage of each main category based on its rank_metric sum
+  main_category_percentage = main_category_rank_sum / total_rank_metric * 100
+
+  # Allocate investment based on the percentage of each main category
+  experimental_percentage = main_category_percentage[main_category_percentage.index == 'EXPERIMENTAL'].iloc[0]
+  regular_percentage = main_category_percentage[main_category_percentage.index == 'REGULAR'].iloc[0]
+  experimental_allocation = experimental_percentage / 100 * total_investment
+  regular_allocation = regular_percentage / 100 * total_investment
+
+  # Allocate investment to each ETF within the experimental main category
+  experimental_etfs = df[df['main_category'] == 'EXPERIMENTAL']
+  experimental_etfs['investment_amount'] = experimental_etfs['rank_metric'] / experimental_etfs['rank_metric'].sum() * experimental_allocation
+  experimental_etfs['investment_amount'] = experimental_etfs['investment_amount'].round(0)
+
+  # Allocate investment to each ETF within the reg main category
+  reg_etfs = df[df['main_category'] == 'REGULAR']
+  reg_etfs['investment_amount'] = reg_etfs['rank_metric'] / reg_etfs['rank_metric'].sum() * regular_allocation
+  reg_etfs['investment_amount'] = reg_etfs['investment_amount'].round(0)
+
+  allocated_df = pd.concat([experimental_etfs, reg_etfs])
+  return allocated_df
+
+# Call the allocate_investment function to allocate investment based on rank_metric and category weights
+allocated_etfs = allocate_investment(allocated_etfs)
 
 # Preparing the final display table
 final_portfolio = allocated_etfs[[
-    'symbol', 'longName', 'rank_metric', '15 day', '1Y', 'category', 'investment_amount', 'Max60', 'Min60'
+    'symbol', 'longName', 'rank_metric', '15 day', '1Y', 'main_category', 'category', 'investment_amount', 'Max60', 'Min60'
 ]].copy()
 
 # Correctly calculate the investment amount by distributing within categories evenly
-for category in portfolio_allocations.keys():
-  final_portfolio.loc[final_portfolio['category'] == category,
-                      'investment_amount'] /= final_portfolio[
-                          final_portfolio['category'] == category].shape[0]
+# for category in portfolio_allocations.keys():
+#   final_portfolio.loc[final_portfolio['category'] == category,
+#                       'investment_amount'] /= final_portfolio[
+#                           final_portfolio['category'] == category].shape[0]
 
 final_portfolio.reset_index(drop=True, inplace=True)
+pd.set_option('display.max_rows', None)
 print(final_portfolio)
 
 # Get the current date
@@ -762,6 +787,7 @@ current_date = datetime.today().strftime('%Y-%m-%d')
 # Save the DataFrame as a CSV file with the current date in the filename
 filtered_etf_data.to_csv(f'filtered_etf_data{current_date}.csv')
 final_portfolio.to_csv(f'final_portfolio_{current_date}.csv')
+final_portfolio.to_csv('final_portfolio.csv')
 
 with pd.option_context('display.max_rows', None, 'display.max_columns', None):
   markdown_str = final_portfolio.to_markdown(index=False)
