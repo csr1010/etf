@@ -496,18 +496,11 @@ def calculate_indicators(style, symbol):
   new_data['analysis_score'] = trend_anlaysis['overall_score']
   new_data['market'] = trend_anlaysis['situation']
   new_data['trend'] = trend_anlaysis['trend']
-  new_data['7 day'] = ((data['Close'].iloc[-1] - data['Close'].iloc[-15]) /
-    data['Close'].iloc[-7]) * 100
-  new_data['15 day'] = ((data['Close'].iloc[-1] - data['Close'].iloc[-15]) /
-                        data['Close'].iloc[-15]) * 100
-  new_data['30 day'] = ((data['Close'].iloc[-1] - data['Close'].iloc[-30]) /
-                        data['Close'].iloc[-30]) * 100
-  new_data['60 day'] = ((data['Close'].iloc[-1] - data['Close'].iloc[-60]) /
-                        data['Close'].iloc[-60]) * 100
-  new_data['90 day'] = ((data['Close'].iloc[-1] - data['Close'].iloc[-90]) /
-                        data['Close'].iloc[-90]) * 100
-  new_data['1Y'] = ((data['Close'].iloc[-1] - data['Close'].iloc[0]) /
-                    data['Close'].iloc[0]) * 100
+  time_periods = [5, 10, 21, 42, 63, 126, 189, 251]
+  # period_names = ['1_week', '2_weeks', '1_month', 2_months, 'Q1', 'Q2', 'Q3', 'Q4']
+  for period in time_periods:
+      new_data[f"{period}_day"] = ((data['Close'].iloc[-1] - data['Close'].iloc[-period]) /
+                                  data['Close'].iloc[-period]) * 100
 
   # Shift the data by one day
   shifted_data = data['Close'].shift(0)
@@ -523,28 +516,24 @@ def calculate_indicators(style, symbol):
       (new_data['Max60'] - data['Close'].iloc[-1]) /
       (new_data['Max60'] - new_data['Min60']))
 
-  new_data['Volume_60'] = data['Volume'].rolling(window=60).mean().iloc[-1]
-  # Calculate Volatility
-  rolling_returns_60 = data['Close'].pct_change().rolling(
-      window=60).mean().iloc[-1]
-  volatility_60 = data['Close'].pct_change().rolling(window=60).std().iloc[-1]
-  weights_60 = 1 / volatility_60
-  new_data['volatility_60'] = weights_60 * rolling_returns_60
+  time_periods = [30, 60, 90]
+  for period in time_periods:
+      # Calculate rolling returns
+      rolling_returns = data['Close'].pct_change().rolling(window=period).mean().iloc[-1]
   
-  new_data['Volume_30'] = data['Volume'].rolling(window=30).mean().iloc[-1]
-  # Calculate Volatility
-  rolling_returns_30 = data['Close'].pct_change().rolling(
-      window=30).mean().iloc[-1]
-  volatility_30 = data['Close'].pct_change().rolling(window=30).std().iloc[-1]
-  weights_30 = 1 / volatility_30
-  new_data['volatility_30'] = weights_30 * rolling_returns_30
-  # new_data['overlap'] = overlap
-  # print("XXXX", new_data)
-  # Calculate composite score
+      # Calculate volatility
+      volatility = data['Close'].pct_change().rolling(window=period).std().iloc[-1]
+  
+      # Calculate weights
+      weights = 1 / volatility
+  
+      # Store the results in the new_data DataFrame
+      new_data[f'volatility_{period}'] = weights * rolling_returns
+ 
   avg_daily_volume = data['Volume'].mean()
   new_data['volume_score'] = (math.log10(avg_daily_volume) - 1) * 100 / (math.log10(10**9) - 1) + 1
-  weights = [0.15, 0.05, 0.15, 0.05, 0.25, 0.15, 0.15, 0.05]  
-  factors = ['15 day', '60 day', '90 day', '1Y', 'volatility_60', 'fluctuation_60', 'analysis_score', 'volume_score']
+  weights = [0.08, 0.08, 0.06, 0.05, 0.07, 0.08, 0.08, 0.10, 0.10, 0.15, 0.10, 0.05]
+  factors = ['10_day', '21_day', '42_day', '63_day', '126_day', '189_day', '251_day', 'volatility_60','volatility_90', 'fluctuation_60', 'analysis_score', 'volume_score']
   # print(new_data)
   new_data['Composite Score'] = np.dot(
       [new_data[factor] for factor in factors], weights)
@@ -734,7 +723,7 @@ filtered_etf_data= pd.concat([filtered_etf_data, new_row], ignore_index=True)
 
 allocated_etfs = allocate_etfs(filtered_etf_data, portfolio_allocations)
 # Calculate the investment amount for each selected ETF
-total_investment = 20000
+total_investment = 25000
 # allocated_etfs['investment_amount'] = allocated_etfs['category'].apply(
 #     lambda x: total_investment * (portfolio_allocations[x][0] / 100))
 
@@ -775,7 +764,7 @@ allocated_etfs = allocate_investment(allocated_etfs)
 
 # Preparing the final display table
 final_portfolio = allocated_etfs[[
-    'symbol', 'investment_amount', 'rank_metric', '7 day', '1Y', 'main_category', 'category'
+    'symbol', 'investment_amount', 'rank_metric', '5_day', '251_day', 'main_category', 'category'
 ]].copy()
 
 # Correctly calculate the investment amount by distributing within categories evenly
