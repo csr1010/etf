@@ -11,14 +11,38 @@
 | SMH      | VanEck Semiconductor ETF              |      13.2095  |  3.79572   | 73.7033 | SECTR      |                 750 | 234.17  | 164.99  |
 
 
+
  Data as of 2024-03-21:
 
-| symbol   | longName                                         |   rank_metric |    15 day |       1Y | main_category   | category   |   investment_amount |   Max60 |    Min60 |
-|:---------|:-------------------------------------------------|--------------:|----------:|---------:|:----------------|:-----------|--------------------:|--------:|---------:|
-| QQQ      | Invesco QQQ Trust                                |       6.68284 |   1.20741 |  45.9347 | EXPERIMENTAL    | AGRSV      |                2453 | 445.022 | 395.757  |
-| MTUM     | iShares MSCI USA Momentum Factor ETF             |       7.03461 |   2.46445 |  40.4689 | EXPERIMENTAL    | MTM        |                2583 | 189.2   | 152.32   |
-| IDMO     | Invesco S&P International Developed Momentum ETF |       6.42932 |   5.78131 |  37.3928 | EXPERIMENTAL    | INTL       |                2360 |  41.85  |  35.8935 |
-| SPY      | SPDR S&P 500 ETF Trust                           |       6.6431  |   2.7124  |  34.6605 | REGULAR         | STBL       |                2439 | 520.48  | 465.833  |
-| SCHG     | Schwab U.S. Large-Cap Growth ETF                 |       6.69985 |   2.44754 |  50.0403 | REGULAR         | GROW       |                2460 |  93.16  |  80.5152 |
-| QUAL     | iShares MSCI USA Quality Factor ETF              |       6.36786 |   2.84998 |  40.1105 | REGULAR         | QUAL       |                2338 | 164.94  | 144.62   |
-| CASH     | Unallocated Cash                                 |       1       | nan       | nan      | REGULAR         | CASH       |                 367 | nan     | nan      |
+| symbol   |   investment_amount | longName                                         |   rank_metric |    15 day |       1Y | main_category   | category   |   Max60 |    Min60 |
+|:---------|--------------------:|:-------------------------------------------------|--------------:|----------:|---------:|:----------------|:-----------|--------:|---------:|
+| QQQ      |                3317 | Invesco QQQ Trust                                |       6.68284 |   1.20741 |  45.9347 | EXPERIMENTAL    | AGRSV      | 445.022 | 395.757  |
+| FBCG     |                3652 | Fidelity Blue Chip Growth ETF                    |       7.35858 |   3.37079 |  59.01   | EXPERIMENTAL    | LEVRG      |  38.63  |  32.19   |
+| VT       |                2751 | Vanguard Total World Stock Index Fund ETF Shares |       5.54165 |   2.66735 |  27.1821 | EXPERIMENTAL    | INTL       | 110     | 100.291  |
+| SPY      |                3297 | SPDR S&P 500 ETF Trust                           |       6.6431  |   2.7124  |  34.6605 | REGULAR         | STBL       | 520.48  | 465.833  |
+| SCHG     |                3325 | Schwab U.S. Large-Cap Growth ETF                 |       6.69985 |   2.44754 |  50.0403 | REGULAR         | GROW       |  93.16  |  80.5152 |
+| QUAL     |                3161 | iShares MSCI USA Quality Factor ETF              |       6.36786 |   2.84998 |  40.1105 | REGULAR         | QUAL       | 164.94  | 144.62   |
+| CASH     |                 496 | Unallocated Cash                                 |       1       | nan       | nan      | REGULAR         | CASH       | nan     | nan      |
+
+ Data as of 2024-03-21:
+
+| symbol   |   investment_amount | longName                            |   rank_metric |    15 day |       1Y | main_category   | category   |   Max60 |    Min60 |
+|:---------|--------------------:|:------------------------------------|--------------:|----------:|---------:|:----------------|:-----------|--------:|---------:|
+| QQQ      |                2893 | Invesco QQQ Trust                   |       6.68284 |   1.20741 |  45.9347 | EXPERIMENTAL    | AGRSV      | 445.022 | 395.757  |
+| SMH      |                4565 | VanEck Semiconductor ETF            |      10.5474  |   4.09703 |  76.6786 | EXPERIMENTAL    | SECTR      | 234.17  | 164.99   |
+| SOXX     |                3577 | iShares Semiconductor ETF           |       8.26468 |   1.34337 |  59.5041 | EXPERIMENTAL    | SECTR      | 237.75  | 179.617  |
+| SPY      |                2875 | SPDR S&P 500 ETF Trust              |       6.6431  |   2.7124  |  34.6605 | REGULAR         | STBL       | 520.48  | 465.833  |
+| SCHG     |                2900 | Schwab U.S. Large-Cap Growth ETF    |       6.69985 |   2.44754 |  50.0403 | REGULAR         | GROW       |  93.16  |  80.5152 |
+| QUAL     |                2756 | iShares MSCI USA Quality Factor ETF |       6.36786 |   2.84998 |  40.1105 | REGULAR         | QUAL       | 164.94  | 144.62   |
+| CASH     |                 433 | Unallocated Cash                    |       1       | nan       | nan      | REGULAR         | CASH       | nan     | nan      |
+
+ Data as of 2024-03-21:
+
+| symbol   |   investment_amount | longName                            |   rank_metric |    15 day |       1Y | main_category   | category   |   Max60 |    Min60 |
+|:---------|--------------------:|:------------------------------------|--------------:|----------:|---------:|:----------------|:-----------|--------:|---------:|
+| QQQ      |                3523 | Invesco QQQ Trust                   |       6.68284 |   1.20741 |  45.9347 | EXPERIMENTAL    | AGRSV      | 445.022 | 395.757  |
+| SMH      |                5560 | VanEck Semiconductor ETF            |      10.5474  |   4.09703 |  76.6786 | EXPERIMENTAL    | SECTR      | 234.17  | 164.99   |
+| SPY      |                3502 | SPDR S&P 500 ETF Trust              |       6.6431  |   2.7124  |  34.6605 | REGULAR         | STBL       | 520.48  | 465.833  |
+| SCHG     |                3532 | Schwab U.S. Large-Cap Growth ETF    |       6.69985 |   2.44754 |  50.0403 | REGULAR         | GROW       |  93.16  |  80.5152 |
+| QUAL     |                3357 | iShares MSCI USA Quality Factor ETF |       6.36786 |   2.84998 |  40.1105 | REGULAR         | QUAL       | 164.94  | 144.62   |
+| CASH     |                 527 | Unallocated Cash                    |       1       | nan       | nan      | REGULAR         | CASH       | nan     | nan      |

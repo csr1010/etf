@@ -36,7 +36,7 @@ def get_sp500_tickers():
 sector_url = "https://etfdb.com/etfs/sector/#sector-power-rankings__return-leaderboard&sort_name=aum_position&sort_order=asc&page=1"
 
 investment_styles = [
-    'socially-responsible', 'consistent-growth', 'aggressive-growth', 'high-momentum'
+    'socially-responsible', 'consistent-growth', 'aggressive-growth'
 ]
 print('investment_styles', investment_styles)
 
@@ -589,6 +589,9 @@ ranked_etf_data = combined_etf_data.sort_values(by='Composite Score',
 
 # Filter and categorize ETFs correctly
 def categorize_etf(row):
+  if row['style'] == 'high-beta':
+    return "LEVRG"
+    
   categories = [
       (["100 ETF", "Portfolio S&P 500"], "EXCLD"),
       (["Gold", "Commodity"], "COMD"),
@@ -710,9 +713,10 @@ portfolio_allocations = {
     # 'CAPS': (.5,2),
     # Experimentation
     'AGRSV': (.10,1),
-    'MTM': (.5,1),
-    'INTL': (.5,1),
-    # 'SECTR': (.5,2),
+    # 'LEVRG': (.10,1),
+    # 'MTM': (.5,1),
+    # 'INTL': (.5,1),
+    'SECTR': (.5,1),
     # future bonds, commodity, real estate, RIET, dividents
     # 'YIELD': (5,1)
     # balance
@@ -728,12 +732,12 @@ filtered_etf_data= pd.concat([filtered_etf_data, new_row], ignore_index=True)
 
 allocated_etfs = allocate_etfs(filtered_etf_data, portfolio_allocations)
 # Calculate the investment amount for each selected ETF
-total_investment = 15000
+total_investment = 20000
 # allocated_etfs['investment_amount'] = allocated_etfs['category'].apply(
 #     lambda x: total_investment * (portfolio_allocations[x][0] / 100))
 
 # Create a new column in df called main_category
-allocated_etfs['main_category'] = np.where(allocated_etfs['category'].isin(['AGRSV', 'MTM', 'INTL', 'SECTR']), 'EXPERIMENTAL', 'REGULAR')
+allocated_etfs['main_category'] = np.where(allocated_etfs['category'].isin(['LEVRG', 'AGRSV', 'MTM', 'INTL', 'SECTR']), 'EXPERIMENTAL', 'REGULAR')
 
 def allocate_investment(df):
   # Calculate the sum of rank_metric for each main category
@@ -769,7 +773,7 @@ allocated_etfs = allocate_investment(allocated_etfs)
 
 # Preparing the final display table
 final_portfolio = allocated_etfs[[
-    'symbol', 'longName', 'rank_metric', '15 day', '1Y', 'main_category', 'category', 'investment_amount', 'Max60', 'Min60'
+    'symbol', 'investment_amount', 'longName', 'rank_metric', '15 day', '1Y', 'main_category', 'category', 'Max60', 'Min60'
 ]].copy()
 
 # Correctly calculate the investment amount by distributing within categories evenly
@@ -781,6 +785,7 @@ final_portfolio = allocated_etfs[[
 final_portfolio.reset_index(drop=True, inplace=True)
 pd.set_option('display.max_rows', None)
 print(final_portfolio)
+print("*** Next IND, BTC, EV, YIELD, MOMENTUM, INTL, REIT, BOND, H.BETA, L.BETA ***")
 
 # Get the current date
 current_date = datetime.today().strftime('%Y-%m-%d')
