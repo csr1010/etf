@@ -23,3 +23,21 @@
 | SCHG     |                4548 |       8.32405 |   1.4778   |   50.0403 | REGULAR         | GROW       |
 | QUAL     |                4172 |       7.63432 |   1.18398  |   40.1105 | REGULAR         | QUAL       |
 | CASH     |                 546 |       1       | nan        |  nan      | REGULAR         | CASH       |
+
+ Data as of 2024-03-21:
+
+| symbol   |   investment_amount |   rank_metric |      5_day |   251_day | main_category   | category   |
+|:---------|--------------------:|--------------:|-----------:|----------:|:----------------|:-----------|
+| SMH      |               23203 |        12.913 |   0.833859 |   76.6786 | EXPERIMENTAL    | SECTR      |
+| CASH     |                1797 |         1     | nan        |  nan      | REGULAR         | CASH       |
+
+ Data as of 2024-03-21:
+
+| symbol   |   investment_amount |   rank_metric |      5_day |   251_day | main_category   | category   |
+|:---------|--------------------:|--------------:|-----------:|----------:|:----------------|:-----------|
+| IYW      |                4555 |       8.33608 |   0.988702 |   54.0414 | EXPERIMENTAL    | AGRSV      |
+| SMH      |                7056 |      12.913   |   0.833859 |   76.6786 | EXPERIMENTAL    | SECTR      |
+| SPY      |                4123 |       7.54475 |   1.38793  |   34.6605 | REGULAR         | STBL       |
+| SCHG     |                4548 |       8.32405 |   1.4778   |   50.0403 | REGULAR         | GROW       |
+| QUAL     |                4172 |       7.63432 |   1.18398  |   40.1105 | REGULAR         | QUAL       |
+| CASH     |                 546 |       1       | nan        |  nan      | REGULAR         | CASH       |

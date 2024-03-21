@@ -278,7 +278,7 @@ def get_etf_pe_ratio(etf_ticker):
 def calculate_combined_risk_score(data, ticker_symbol):
   # etf_pe_ratio, category_avg_pe_ratio = pe_ratio_map[ticker_symbol]
   
-  etf_pe_ratio = yf.Ticker(symbol).info['trailingPE'] if 'trailingPE' in yf.Ticker(symbol).info else 0
+  etf_pe_ratio = yf.Ticker(ticker_symbol).info['trailingPE'] if 'trailingPE' in yf.Ticker(ticker_symbol).info else 0
   
   # Standard deviation of closing prices as the volatility score
   volatility_score = data["Close"].std()
@@ -794,51 +794,3 @@ content_to_write = f"\n\n Data as of {current_date}:\n\n{markdown_str}"
 # Write the combined content to readme.md
 with open('readme.md', 'a') as file:
     file.write(content_to_write)
-
-# ranked_sp_500_data.to_csv(f'ranked_sp_500_data{current_date}.csv')
-
-
-# Function to backtest the top 5 ETFs
-def backtest(symbols):
-  # Download historical data for the past year
-  data = yf.download(symbols + ['SPY'], period="1y")['Close']
-  # Calculate daily returns
-  returns = data.pct_change()
-  # Initialize portfolio with equal weights
-  weights = pd.Series(1 / len(symbols), index=symbols)
-  # Initialize portfolio values for each ETF
-  portfolio_values = pd.DataFrame(0, index=data.index, columns=symbols)
-  portfolio_values.iloc[0] = (10000 * weights)  # initial investment
-  # Backtest
-  for i in range(1, len(data)):
-    # Update portfolio values
-    portfolio_values.iloc[i] = portfolio_values.iloc[i - 1] * (
-        1 + returns.iloc[i][symbols])
-    # Rebalance every 180 days
-    if i % 15 == 0:
-      # Calculate new weights based on composite scores
-      scores = pd.Series({
-          symbol:
-          calculate_indicators(symbol)['Composite Score']
-          for symbol in symbols
-      })
-      weights = scores / scores.sum()
-      # Rebalance portfolio values
-      total_value = portfolio_values.iloc[i].sum()
-      portfolio_values.iloc[i] = total_value * weights
-  # Calculate final values and % growth
-  final_values = portfolio_values.iloc[-1]
-  growth = (final_values / (10000 / len(symbols)) - 1) * 100
-  # Create a DataFrame with the results
-  results = pd.DataFrame({
-      'Symbol': symbols,
-      'Final Value': final_values,
-      '% Growth': growth
-  })
-  # Print the results
-  print(results)
-
-
-# top_etfs = ranked_data.index.get_level_values(0)[:5]
-# print(list(top_etfs))
-# backtest(list(top_etfs))
