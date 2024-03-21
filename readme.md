@@ -15,28 +15,6 @@
 
  Data as of 2024-03-21:
 
-| symbol   |   investment_amount |   rank_metric |     7 day |       1Y | main_category   | category   |
-|:---------|--------------------:|--------------:|----------:|---------:|:----------------|:-----------|
-| QQQ      |                4399 |       6.68399 |   1.20741 |  45.9347 | EXPERIMENTAL    | AGRSV      |
-| SMH      |                6961 |      10.5752  |   4.09703 |  76.6786 | EXPERIMENTAL    | SECTR      |
-| SPY      |                4375 |       6.64728 |   2.7124  |  34.6605 | REGULAR         | STBL       |
-| SCHG     |                4412 |       6.7029  |   2.44754 |  50.0403 | REGULAR         | GROW       |
-| QUAL     |                4195 |       6.37303 |   2.84998 |  40.1105 | REGULAR         | QUAL       |
-| CASH     |                 658 |       1       | nan       | nan      | REGULAR         | CASH       |
-
- Data as of 2024-03-21:
-
-| symbol   |   investment_amount |   rank_metric |      5_day |   251_day | main_category   | category   |
-|:---------|--------------------:|--------------:|-----------:|----------:|:----------------|:-----------|
-| IYW      |                4637 |       8.96038 |   0.988702 |   54.0414 | EXPERIMENTAL    | AGRSV      |
-| SMH      |                7107 |      13.733   |   0.833859 |   76.6786 | EXPERIMENTAL    | SECTR      |
-| SPY      |                4052 |       7.82967 |   1.38793  |   34.6605 | REGULAR         | STBL       |
-| SCHG     |                4559 |       8.80871 |   1.4778   |   50.0403 | REGULAR         | GROW       |
-| QUAL     |                4128 |       7.97619 |   1.18398  |   40.1105 | REGULAR         | QUAL       |
-| CASH     |                 518 |       1       | nan        |  nan      | REGULAR         | CASH       |
-
- Data as of 2024-03-21:
-
 | symbol   |   investment_amount |   rank_metric |      5_day |   251_day | main_category   | category   |
 |:---------|--------------------:|--------------:|-----------:|----------:|:----------------|:-----------|
 | IYW      |                4555 |       8.33608 |   0.988702 |   54.0414 | EXPERIMENTAL    | AGRSV      |
