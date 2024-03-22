@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 import numpy as np
 import matplotlib.pyplot as plt
-from ta_py import ema, rsi, bands
+from ta_py import ema, rsi, bands, macd, sma
 import nltk
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 import time
@@ -236,7 +236,7 @@ def get_etf_pe_ratio(etf_ticker):
     '/html/body/main/div/div[2]/div[2]/div/div[2]/div/div[1]/div/div[2]/div[2]/div/table/tbody/tr[9]/td[2]/text()',
   ]
   for i, url in enumerate(urls):
-    print("PE", etf_ticker, url)
+    # print("PE", etf_ticker, url)
     try:
       response = requests.get(url.format(etf_ticker=etf_ticker))
       doc = html.fromstring(response.content)
@@ -244,7 +244,7 @@ def get_etf_pe_ratio(etf_ticker):
       pe_ratio = doc.xpath(xpaths_pe_ratio[i])
       exp_ratio = doc.xpath(xpaths_exp_ratio[i])
 
-      print("PE", pe_ratio, exp_ratio)
+      # print("PE", pe_ratio, exp_ratio)
 
       if pe_ratio or exp_ratio:
           exp = float(exp_ratio[0].replace("%", "")) if exp_ratio and exp_ratio[0] else 0.02
@@ -253,7 +253,7 @@ def get_etf_pe_ratio(etf_ticker):
           else:
             pe = float(pe_ratio[0])
           pe_exp_ratio_map[etf_ticker] = (pe, exp)
-          print("PE IN ", url, pe_exp_ratio_map[etf_ticker])
+          # print("PE IN ", url, pe_exp_ratio_map[etf_ticker])
           return pe_exp_ratio_map[etf_ticker]
     except Exception as e:
         print("pe exception", e)
@@ -270,52 +270,88 @@ def calculate_combined_risk_score(data, ticker_symbol):
       "safe_score_normalized": safe_score_normalized
   }
 
-def calculate_combined_trend_score(data):
-  # Assuming 'ema', 'rsi', and 'bands' functions are defined and return the necessary values.
-  ema_val = ema(data["Close"], 14)
-  rsi_val = rsi(data["Close"], 14)
-  bollinger_bands = bands(data["Close"], 14, 2)
+def calculate_indicator_scores(close_prices, period):
+  ema_val = ema(close_prices, period)
+  rsi_val = rsi(close_prices, period)
+  bollinger_bands = bands(close_prices, period, 2)
   upper_band, lower_band = bollinger_bands[0], bollinger_bands[1]
+
+  weights = {
+      'ema': 0.25,
+      'rsi': 0.25,
+      'bands': 0.25,
+  }
+
+  middle_band = sma(close_prices, period)
   
-  score = 0
-  trend = 'neutral'
-  situation = 'neutral'
+  # RSI scoring: Closer to 50 is better
+  rsi_score = (50 - abs(50 - rsi_val[-1])) / 50
+  # EMA scoring: Positive difference is better
+  ema_score = (close_prices[-1] - ema_val[-1]) / close_prices[-1]
+  # Bollinger Bands scoring: Closer to middle band is better
+  bands_score = 1 - abs(close_prices[-1] - middle_band[-1]) / (upper_band[-1] - lower_band[-1])
   
-  # RSI Conditions
+  # Combine scores
+  combined_score = (rsi_score * weights['rsi'] +
+                    ema_score * weights['ema'] +
+                    bands_score * weights['bands'])
+  print(combined_score)
+  return combined_score
+
+def check_golden_death_cross(close_prices):
+  short_term_ema = ema(close_prices, 50)
+  long_term_ema = ema(close_prices, 200)
+
+  # Check for golden/death cross in the most recent data points
+  if short_term_ema[-1] > long_term_ema[-1] and short_term_ema[-2] <= long_term_ema[-2]:
+      return "bullish"
+  elif short_term_ema[-1] < long_term_ema[-1] and short_term_ema[-2] >= long_term_ema[-2]:
+      return "bearish"
+  else:
+      return "neutral"
+
+def calculate_combined_trend_score(data):
+  periods = [15, 90]
+  close_prices = data["Close"].to_numpy()
+  period_weights = [0.65, 0.35]
+
+  weighted_scores = []
+  for period, weight in zip(periods, period_weights):
+      period_score = calculate_indicator_scores(close_prices, period)
+      weighted_scores.append(period_score * weight)
+
+  combined_score = sum(weighted_scores)
+  # Determine trend based on the most recent EMA comparison
+  trend = "up" if close_prices[-1] > ema(close_prices, periods[0])[-1] else "down"
+
+  # Situation analysis based on the most recent RSI value
+  rsi_val = rsi(close_prices, periods[0])
   if rsi_val[-1] > 70:
-      situation = 'overbought'
-      score -= 3
-  elif 60 < rsi_val[-1] <= 70:
-      situation = 'close to overbought'
-      score -= 1
-  elif 30 <= rsi_val[-1] < 40:
-      situation = 'close to oversold'
-      score += 1
+      situation = "overbought"
   elif rsi_val[-1] < 30:
-      situation = 'oversold'
-      score += 3
-  
-  # EMA Trend
-  if data["Close"].iloc[-1] > ema_val[-1]:
-      trend = 'up'
-      score += 1
-  elif data["Close"].iloc[-1] < ema_val[-1]:
-      trend = 'down'
-      score -= 1
-  
-  # Bollinger Bands Condition
-  if data["Close"].iloc[-1] >= upper_band[-1]:
-      score -= 1  # Adjusting score based on Bollinger Band condition
-  elif data["Close"].iloc[-1] <= lower_band[-1]:
-      score += 1
-  
-  # Normalize score to be between 0 and 1
-  normalized_score = (score + 5) / 10  # Assuming score range is -5 to +5 for normalization
-  
+      situation = "oversold"
+  else:
+      situation = "neutral"
+
+  # Incorporate golden/death cross into forecast
+  cross_signal = check_golden_death_cross(close_prices)
+  if cross_signal == "bullish":
+      forecast = "strong bull"
+  elif cross_signal == "bearish":
+      forecast = "strong bear"
+  else:
+      forecast = "bull" if combined_score > 0 else "bear"
+  print({
+           "overall_score": combined_score,
+           "trend": trend,
+           "situation": situation,
+           "forecast": forecast
+       })
   return {
-      "overall_score": normalized_score,
+      "overall_score": combined_score,
       "trend": trend,
-      "situation": situation
+      "situation": situation,
+      "forecast": forecast
   }
 
 cache = {}
@@ -446,8 +482,9 @@ def calculate_indicators(style, symbol):
   #     'average_sentiment']['negative'] else -1
   trend_anlaysis = calculate_combined_trend_score(data)
   new_data['analysis_score'] = trend_anlaysis['overall_score']
-  new_data['market'] = trend_anlaysis['situation']
+  new_data['situation'] = trend_anlaysis['situation']
   new_data['trend'] = trend_anlaysis['trend']
+  new_data['forecast'] = trend_anlaysis['forecast']
   time_periods = [5, 10, 21, 42, 63, 126, 189, 251]
   # period_names = ['1_week', '2_weeks', '1_month', 2_months, 'Q1', 'Q2', 'Q3', 'Q4']
   for period in time_periods:
@@ -484,7 +521,7 @@ def calculate_indicators(style, symbol):
  
   avg_daily_volume = data['Volume'].mean()
   new_data['volume_score'] = (math.log10(avg_daily_volume) - 1) * 100 / (math.log10(10**9) - 1) + 1
-  weights = [0.08, 0.08, 0.06, 0.05, 0.07, 0.08, 0.08, 0.10, 0.10, 0.15, 0.10, 0.025, 0.025]
+  weights = [0.08, 0.08, 0.06, 0.05, 0.07, 0.08, 0.08, 0.10, 0.10, 0.13, 0.12, 0.025, 0.025]
   factors = ['10_day', '21_day', '42_day', '63_day', '126_day', '189_day', '251_day', 'volatility_60','volatility_90', 'fluctuation_60', 'analysis_score', 'volume_score', 'inverse_risk_score']
   # print(new_data)
   new_data['Composite Score'] = np.dot(
@@ -663,7 +700,7 @@ portfolio_allocations = {
     # future bonds, commodity, real estate, RIET, dividents
     # 'YIELD': (5,1)
     # balance
-    'CASH': (0,1)
+    # 'CASH': (0,1)
 }
 
 # Specifying default values for each column
@@ -716,7 +753,7 @@ allocated_etfs = allocate_investment(allocated_etfs)
 
 # Preparing the final display table
 final_portfolio = allocated_etfs[[
-    'symbol', 'investment_amount', 'rank_metric', '5_day', '251_day', 'main_category', 'category'
+    'symbol', 'investment_amount', 'rank_metric', '5_day', '251_day', 'category', 'situation', 'trend', 'forecast'
 ]].copy()
 
 # Correctly calculate the investment amount by distributing within categories evenly

@@ -1,45 +1,10 @@
 
-
- Data as of 2024-03-21:
-
-| symbol   |   investment_amount | longName                            |   rank_metric |    15 day |       1Y | main_category   | category   |   Max60 |    Min60 |
-|:---------|--------------------:|:------------------------------------|--------------:|----------:|---------:|:----------------|:-----------|--------:|---------:|
-| QQQ      |                3523 | Invesco QQQ Trust                   |       6.68284 |   1.20741 |  45.9347 | EXPERIMENTAL    | AGRSV      | 445.022 | 395.757  |
-| SMH      |                5560 | VanEck Semiconductor ETF            |      10.5474  |   4.09703 |  76.6786 | EXPERIMENTAL    | SECTR      | 234.17  | 164.99   |
-| SPY      |                3502 | SPDR S&P 500 ETF Trust              |       6.6431  |   2.7124  |  34.6605 | REGULAR         | STBL       | 520.48  | 465.833  |
-| SCHG     |                3532 | Schwab U.S. Large-Cap Growth ETF    |       6.69985 |   2.44754 |  50.0403 | REGULAR         | GROW       |  93.16  |  80.5152 |
-| QUAL     |                3357 | iShares MSCI USA Quality Factor ETF |       6.36786 |   2.84998 |  40.1105 | REGULAR         | QUAL       | 164.94  | 144.62   |
-| CASH     |                 527 | Unallocated Cash                    |       1       | nan       | nan      | REGULAR         | CASH       | nan     | nan      |
-
- Data as of 2024-03-21:
-
-| symbol   |   investment_amount |   rank_metric |      5_day |   251_day | main_category   | category   |
-|:---------|--------------------:|--------------:|-----------:|----------:|:----------------|:-----------|
-| IYW      |                4555 |       8.33608 |   0.988702 |   54.0414 | EXPERIMENTAL    | AGRSV      |
-| SMH      |                7056 |      12.913   |   0.833859 |   76.6786 | EXPERIMENTAL    | SECTR      |
-| SPY      |                4123 |       7.54475 |   1.38793  |   34.6605 | REGULAR         | STBL       |
-| SCHG     |                4548 |       8.32405 |   1.4778   |   50.0403 | REGULAR         | GROW       |
-| QUAL     |                4172 |       7.63432 |   1.18398  |   40.1105 | REGULAR         | QUAL       |
-| CASH     |                 546 |       1       | nan        |  nan      | REGULAR         | CASH       |
-
  Data as of 2024-03-22:
 
-| symbol   |   investment_amount |   rank_metric |      5_day |   251_day | main_category   | category   |
-|:---------|--------------------:|--------------:|-----------:|----------:|:----------------|:-----------|
-| IYW      |                4580 |       7.41668 |   0.988702 |   54.0414 | EXPERIMENTAL    | AGRSV      |
-| SMH      |                7287 |      11.8005  |   0.833859 |   76.6786 | EXPERIMENTAL    | SECTR      |
-| SPY      |                3857 |       6.24537 |   1.38793  |   34.6605 | REGULAR         | STBL       |
-| SCHG     |                4549 |       7.36631 |   1.4778   |   50.0403 | REGULAR         | GROW       |
-| QUAL     |                4110 |       6.65645 |   1.18398  |   40.1105 | REGULAR         | QUAL       |
-| CASH     |                 618 |       1       | nan        |  nan      | REGULAR         | CASH       |
-
- Data as of 2024-03-22:
-
-| symbol   |   investment_amount |   rank_metric |     5_day |   251_day | main_category   | category   |
-|:---------|--------------------:|--------------:|----------:|----------:|:----------------|:-----------|
-| IYW      |                4445 |       7.33598 |   2.80149 |   51.8967 | EXPERIMENTAL    | AGRSV      |
-| SMH      |                7586 |      12.5194  |   3.88818 |   76.0072 | EXPERIMENTAL    | SECTR      |
-| SPY      |                3858 |       6.36609 |   2.4263  |   34.7412 | REGULAR         | STBL       |
-| SCHG     |                4398 |       7.25731 |   2.58342 |   48.6502 | REGULAR         | GROW       |
-| QUAL     |                4108 |       6.77883 |   2.45232 |   39.5906 | REGULAR         | QUAL       |
-| CASH     |                 606 |       1       | nan       |  nan      | REGULAR         | CASH       |
+| symbol   |   investment_amount |   rank_metric |   5_day |   251_day | category   | situation   | trend   | forecast   |
+|:---------|--------------------:|--------------:|--------:|----------:|:-----------|:------------|:--------|:-----------|
+| IYW      |                4483 |       7.74686 | 2.8613  |   51.9851 | AGRSV      | neutral     | up      | bull       |
+| SMH      |                7983 |      13.7956  | 3.88818 |   76.0072 | SECTR      | neutral     | up      | bull       |
+| SPY      |                3877 |       6.7005  | 2.4263  |   34.7412 | STBL       | neutral     | up      | bull       |
+| SCHG     |                4406 |       7.61316 | 2.58342 |   48.6502 | GROW       | neutral     | up      | bull       |
+| QUAL     |                4251 |       7.34564 | 2.68579 |   39.9087 | QUAL       | neutral     | up      | bull       |
