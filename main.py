@@ -219,108 +219,54 @@ def parse_monetary_value(value):
 
     return number
 
-def get_etf_expense_aum(etf_ticker):
-  try:
-    url = f"https://etfdb.com/etf/{etf_ticker}/#etf-ticker-profile"
-    response = requests.get(url)
-    doc = html.fromstring(response.content)
-  
-    # XPath to find the expense ratio
-    xpath_aum = '//*[@id="overview"]/div[1]/div/div[5]/div[1]/div/ul[2]/li[1]/span[2]/text()'
-    aum = doc.xpath(xpath_aum)
-  
-    xpath_exp_ratio = '//*[@id="overview"]/div[1]/div/div[1]/div[1]/div/div[4]/span[2]/text()'
-    expense_ratio = doc.xpath(xpath_exp_ratio)
-    print("exp ratio",etf_ticker, expense_ratio)
-    print("aum",etf_ticker, aum)
-  
-    expense_aum_ratio[symbol] = (
-      float(expense_ratio[0].replace("%", "")),
-      parse_monetary_value(aum[0])
-    )
-  
-    return (
-      float(expense_ratio[0].replace("%", "")),
-      parse_monetary_value(aum[0])
-    ) if aum else None
-  except Exception as e:
-    expense_aum_ratio[symbol] = (
-      0, 0
-    )
-    print("aum exp exception", e)
-    return (
-      0, 0
-    )
-pe_ratio_map = {}
+pe_exp_ratio_map = {}
   
 def get_etf_pe_ratio(etf_ticker):
-  try:
-    url = f"https://etfdb.com/etf/{etf_ticker}/#etf-ticker-valuation-dividend"
-    response = requests.get(url)
-    doc = html.fromstring(response.content)
-  
-    # XPath to find the PE ratio
-    xpath_pe_ratio = '//*[@id="valuation-collapse"]/div/div[2]/div/div/div[1]/div[4]/text()'
-    xpath_avg_pe_ratio = '//*[@id="valuation-collapse"]/div/div[2]/div/div/div[2]/div[4]/text()'
-    pe_ratio = doc.xpath(xpath_pe_ratio)
-    avg_pe_ratio = doc.xpath(xpath_avg_pe_ratio)
-    print("pe ratio",etf_ticker, pe_ratio, avg_pe_ratio)
-    pe_ratio_map[etf_ticker] = (
-      float(pe_ratio[0]), float(avg_pe_ratio[0]))
-    return (float(pe_ratio[0]), float(avg_pe_ratio[0])) if pe_ratio and avg_pe_ratio else (None, None)
-  except Exception as e:
-    print("pe exception", e)
-    pe_ratio_map[etf_ticker] = (0,0)
-    return (
-      0, 0
-    )
+  time.sleep(1)
+  urls = [
+    "https://stockanalysis.com/etf/{etf_ticker}",
+    "https://etfdb.com/etf/{etf_ticker}/#etf-ticker-valuation-dividend",
+  ]
+  xpaths_pe_ratio = [
+    '/html/body/div/div[1]/div[2]/main/div[2]/div[2]/table[1]/tbody/tr[3]/td[2]/text()',
+'/html/body/div[2]/div[9]/div[2]/div/div[1]/div/div[3]/div/div[1]/div/div/div/div/div/div[2]/div/div/div[1]/div[4]/text()',
+  ]
+  xpaths_exp_ratio = [
+    '/html/body/div/div[1]/div[2]/main/div[2]/div[2]/table[1]/tbody/tr[2]/td[2]/text()',
+    '/html/body/main/div/div[2]/div[2]/div/div[2]/div/div[1]/div/div[2]/div[2]/div/table/tbody/tr[9]/td[2]/text()',
+  ]
+  for i, url in enumerate(urls):
+    print("PE", etf_ticker, url)
+    try:
+      response = requests.get(url.format(etf_ticker=etf_ticker))
+      doc = html.fromstring(response.content)
+
+      pe_ratio = doc.xpath(xpaths_pe_ratio[i])
+      exp_ratio = doc.xpath(xpaths_exp_ratio[i])
+
+      print("PE", pe_ratio, exp_ratio)
+
+      if pe_ratio or exp_ratio:
+          exp = float(exp_ratio[0].replace("%", "")) if exp_ratio and exp_ratio[0] else 0.02
+          if pe_ratio[0] == "N/A":
+            pe = 0
+          else:
+            pe = float(pe_ratio[0])
+          pe_exp_ratio_map[etf_ticker] = (pe, exp)
+          print("PE IN ", url, pe_exp_ratio_map[etf_ticker])
+          return pe_exp_ratio_map[etf_ticker]
+    except Exception as e:
+        print("pe exception", e)
+
+  pe_exp_ratio_map[etf_ticker] = (0, 0)
+  return (0, 0)
 
 def calculate_combined_risk_score(data, ticker_symbol):
-  # etf_pe_ratio, category_avg_pe_ratio = pe_ratio_map[ticker_symbol]
-  
-  etf_pe_ratio = yf.Ticker(ticker_symbol).info['trailingPE'] if 'trailingPE' in yf.Ticker(ticker_symbol).info else 0
-  
-  # Standard deviation of closing prices as the volatility score
-  volatility_score = data["Close"].std()
-  
-  # Fetch AUM and convert to a numeric scale if needed
-  # expense, aum = expense_aum_ratio[ticker_symbol]  # Example function to get AUM
-  # aum_score =  np.log(aum + 1) if aum != 0 else np.nan  # Larger AUM as lower risk
-  aum_score =  1
-  
-  # Fetch expense ratio
-  # expense_ratio, _aum = expense_aum_ratio[ticker_symbol]
-  # expense_score = expense_ratio if expense_ratio is not None else np.nan
-  expense_score = 1
-  
-  # if etf_pe_ratio <= category_avg_pe_ratio:
-  #   pe_ratio_score = 1  # No penalty if ETF's P/E is less than or equal to the category average
-  # else:
-  #   # Apply a penalty scaling as the ETF's P/E ratio exceeds the category average
-  #   pe_ratio_score = max(1 - (etf_pe_ratio / category_avg_pe_ratio - 1), 0)
-
-  pe_ratio_score = etf_pe_ratio
-    
-  # Combine risk scores, handling potential NaNs
-  risk_scores = np.array([volatility_score, aum_score, expense_score, pe_ratio_score])
-  valid_risk_scores = risk_scores[~np.isnan(risk_scores)]
-  
-  # Weighted scores - adjust based on available scores
-  weights = np.array([0.3, 0.25, 0.25, 0.2])[:len(valid_risk_scores)]
-  normalized_weights = weights / np.sum(weights)
-  
-  # Calculate combined risk score using dot product
-  combined_risk_score = np.dot(normalized_weights, valid_risk_scores) if valid_risk_scores.any() else np.nan
-  
-  # Inversion for safe score
-  max_risk_score = np.dot(normalized_weights, np.ones_like(valid_risk_scores) * 10)
-  safe_score = (max_risk_score - combined_risk_score) / max_risk_score
-  
-  # Ensure safe score is within 0-1 range
-  safe_score_normalized = np.clip(safe_score, 0, 1)
+  etf_pe_ratio, exp_ratio = pe_exp_ratio_map[ticker_symbol]
+  safe_score_normalized = (1/etf_pe_ratio)*10
+  print ("safe score", ticker_symbol, etf_pe_ratio, safe_score_normalized)
   
   return {
-      "combined_risk_score": combined_risk_score,
       "safe_score_normalized": safe_score_normalized
   }
 
@@ -378,12 +324,15 @@ def get_etf_holdings(symbol):
   try:
     # Send a GET request to the URL
     url = f"https://etfdb.com/etf/{symbol}/#holdings"
+    time.sleep(1)
+    # url = f"https://stockanalysis.com/etf/{symbol}/holdings/"
     response = requests.get(url)
     response.raise_for_status()  # Check for HTTP request errors
     soup = BeautifulSoup(response.text, 'html.parser')
 
     # Find the holdings table by ID
     holdings_table = soup.find('table', {'id': 'etf-holdings'})
+    # holdings_table = soup.find('table', {'class': 'svelte-1jtwn20'})
 
     # Initialize lists to hold symbols and weights
     symbols = []
@@ -470,15 +419,18 @@ def calculate_indicators(style, symbol):
     return None
 
   # exp, aum = get_etf_expense_aum(symbol)
-  # get_etf_pe_ratio(symbol)
+  pe,exp = get_etf_pe_ratio(symbol)
+  if pe == 0:
+    return None
+  
   
   # Initialize a new dictionary to store the results
   new_data = {}
   new_data['style'] = style
   new_data['symbol'] = symbol
   new_data['longName'] = ticker.info['longName']
-  # peratio, avg_pe_ratio = pe_ratio_map[symbol]
-  new_data['peratio'] = 1 / (ticker.info['trailingPE'] if 'trailingPE' in ticker.info else 1)
+  peratio, exp_ratio = pe_exp_ratio_map[symbol]
+  new_data['peratio'] = peratio
 
   # new_data['exp_ratio'] = exp
   # new_data['category'] = ticker.info['category']
@@ -532,8 +484,8 @@ def calculate_indicators(style, symbol):
  
   avg_daily_volume = data['Volume'].mean()
   new_data['volume_score'] = (math.log10(avg_daily_volume) - 1) * 100 / (math.log10(10**9) - 1) + 1
-  weights = [0.08, 0.08, 0.06, 0.05, 0.07, 0.08, 0.08, 0.10, 0.10, 0.15, 0.10, 0.05]
-  factors = ['10_day', '21_day', '42_day', '63_day', '126_day', '189_day', '251_day', 'volatility_60','volatility_90', 'fluctuation_60', 'analysis_score', 'volume_score']
+  weights = [0.08, 0.08, 0.06, 0.05, 0.07, 0.08, 0.08, 0.10, 0.10, 0.15, 0.10, 0.025, 0.025]
+  factors = ['10_day', '21_day', '42_day', '63_day', '126_day', '189_day', '251_day', 'volatility_60','volatility_90', 'fluctuation_60', 'analysis_score', 'volume_score', 'inverse_risk_score']
   # print(new_data)
   new_data['Composite Score'] = np.dot(
       [new_data[factor] for factor in factors], weights)
