@@ -521,7 +521,7 @@ def calculate_indicators(style, symbol):
  
   avg_daily_volume = data['Volume'].mean()
   new_data['volume_score'] = (math.log10(avg_daily_volume) - 1) * 100 / (math.log10(10**9) - 1) + 1
-  weights = [0.08, 0.08, 0.06, 0.05, 0.07, 0.08, 0.08, 0.10, 0.10, 0.13, 0.12, 0.025, 0.025]
+  weights = [0.08, 0.08, 0.06, 0.05, 0.07, 0.08, 0.08, 0.08, 0.08, 0.08, 0.13, 0.05, 0.08]
   factors = ['10_day', '21_day', '42_day', '63_day', '126_day', '189_day', '251_day', 'volatility_60','volatility_90', 'fluctuation_60', 'analysis_score', 'volume_score', 'inverse_risk_score']
   # print(new_data)
   new_data['Composite Score'] = np.dot(
@@ -575,6 +575,7 @@ def categorize_etf(row):
   categories = [
       (["100 ETF", "Portfolio S&P 500"], "EXCLD"),
       (["Gold", "Commodity"], "COMD"),
+      (["Technology"], "TECH"),
       (["Sector", "Semiconductor", "Health", "Medical"], "SECTR"),
       (["Global", "Intl", "International", "World", "Developed", "Emerging", "Japan", "Taiwan", "China"], "INTL"),
       (["Momentum"], "MTM"),
@@ -696,15 +697,16 @@ portfolio_allocations = {
     # 'LEVRG': (.10,1),
     # 'MTM': (.5,1),
     # 'INTL': (.5,1),
+    'TECH': (.5,1),
     'SECTR': (.5,1),
     # future bonds, commodity, real estate, RIET, dividents
     # 'YIELD': (5,1)
     # balance
-    # 'CASH': (0,1)
+    'CASH': (0,1)
 }
 
 # Specifying default values for each column
-default_values = {'symbol': 'CASH', 'category': 'CASH', 'rank_metric': 1, 'longName': "Unallocated Cash", 'overlap': 0, 'Composite Score': 0}
+default_values = {'symbol': 'CASH', 'category': 'CASH', 'rank_metric': 2, 'longName': "Unallocated Cash", 'overlap': 0, 'Composite Score': 0}
 # Create a DataFrame from the new row data
 new_row = pd.DataFrame([default_values])
 # Adding the row with default values
@@ -717,7 +719,7 @@ total_investment = 25000
 #     lambda x: total_investment * (portfolio_allocations[x][0] / 100))
 
 # Create a new column in df called main_category
-allocated_etfs['main_category'] = np.where(allocated_etfs['category'].isin(['LEVRG', 'AGRSV', 'MTM', 'INTL', 'SECTR']), 'EXPERIMENTAL', 'REGULAR')
+allocated_etfs['main_category'] = np.where(allocated_etfs['category'].isin(['LEVRG', 'AGRSV', 'MTM', 'INTL', 'SECTR', 'TECH']), 'EXPERIMENTAL', 'REGULAR')
 
 def allocate_investment(df):
   # Calculate the sum of rank_metric for each main category
